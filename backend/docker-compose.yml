@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: synkaro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: synkaro_user
+      POSTGRES_PASSWORD: synkaro2026
+      POSTGRES_DB: synkaro_db
+      # Allow password auth from all hosts (Docker host connects via mapped port)
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: "--auth-host=md5 --auth-local=trust"
+    ports:
+      - "5433:5432"
+    volumes:
+      - synkaro-pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: synkaro-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: synkaro-livekit
+    restart: unless-stopped
+    # Use explicit keys so the backend signs JWTs with matching credentials.
+    # LIVEKIT_KEYS expects the format "<key>: <secret>".
+    environment:
+      LIVEKIT_KEYS: "devkey: devkeysecret"
+    command: ["--dev", "--bind", "0.0.0.0"]
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+
+volumes:
+  synkaro-pgdata:

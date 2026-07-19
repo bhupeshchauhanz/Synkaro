@@ -1,0 +1,182 @@
+// Synkaro — PostgreSQL schema (Prisma)
+// Domain: synkaro.bhupeshchauhan.in
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  username        String   @unique
+  email           String   @unique
+  passwordHash    String?
+  googleId        String?  @unique
+  avatar          String?
+  isAdmin         Boolean  @default(false)
+  bio             String?
+  phone           String?
+  address         String?
+  dateOfBirth     DateTime?
+  themePreference String   @default("dark")
+  emailVerified   Boolean  @default(false)
+  lastSeenAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  rooms          RoomMember[]
+  ownedRooms     Room[]         @relation("Owner")
+  messages       Message[]
+  watchHistory   WatchHistory[]
+  refreshTokens  RefreshToken[]
+  uploadedFiles  UploadedFile[] @relation("Uploader")
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  userAgent String?
+  ipAddress String?
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailOtp {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  purpose   String   @default("verify")
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model Room {
+  id           String   @id @default(cuid())
+  name         String
+  nickname     String?
+  type         String   @default("friend")
+  inviteCode   String   @unique
+  ownerId      String
+  currentTheme String   @default("midnight")
+  background   String?  // preset id or uploaded URL
+  maxMembers   Int      @default(6)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner        User           @relation("Owner", fields: [ownerId], references: [id])
+  members      RoomMember[]
+  messages     Message[]
+  files        UploadedFile[]
+  watchHistory WatchHistory[]
+  watchlist    WatchlistItem[]
+
+  @@index([ownerId])
+}
+
+model RoomMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  userId   String
+  role     String   @default("member")
+  nickname String?
+  joinedAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  roomId    String
+  senderId  String
+  content   String?
+  type      String    @default("text")
+  fileUrl   String?
+  metadata  Json?
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  room   Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+model UploadedFile {
+  id           String    @id @default(cuid())
+  roomId       String
+  filePath     String
+  fileName     String
+  fileSize     BigInt
+  mimeType     String
+  uploadedById String
+  expiresAt    DateTime?
+  keepSessions Int       @default(0)
+  usedSessions Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  room       Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation("Uploader", fields: [uploadedById], references: [id])
+
+  @@index([roomId])
+}
+
+model WatchHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  roomId     String
+  fileId     String?
+  youtubeUrl String?
+  timestamp  Float    @default(0)
+  duration   Float?
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  roomId    String
+  title     String
+  source    String
+  url       String?
+  addedById String
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
