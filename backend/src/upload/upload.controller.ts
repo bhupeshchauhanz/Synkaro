@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { IsInt, IsString, Min } from 'class-validator';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoomMemberGuard } from '../rooms/guards/room-member.guard';
 import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
@@ -47,6 +48,7 @@ export class UploadController {
   constructor(private readonly upload: UploadService) {}
 
   @Post('chunk')
+  @Throttle({ default: { limit: 800, ttl: 60_000 } }) // allow burst for chunked uploads (3GB/4MB=750 chunks)
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {

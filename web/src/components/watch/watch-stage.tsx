@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Upload, Film, Trash2, Library } from 'lucide-react';
+import { Loader2, Upload, Film, Trash2, Library, FileText } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { api, getApiError } from '@/lib/api';
 import { getSocket, type WatchStateDto } from '@/lib/socket';
 import { uploadFile, abortUpload } from '@/lib/upload';
 import { SyncVideoPlayer } from './sync-video-player';
+import { SyncDocumentViewer } from './sync-document-viewer';
 
 interface UploadedFile {
   id: string;
@@ -235,11 +236,21 @@ export function WatchStage({
     if (!file) return;
     const reset = () => { if (fileInput.current) fileInput.current.value = ''; };
     if (/\.(mkv|avi|mov|flv|wmv)$/i.test(file.name) || file.type === 'video/x-matroska') {
-      toast.error('This format can\u2019t play in the browser. Please upload an MP4 or WebM file.');
+      toast.error('This video format can\u2019t play in the browser. Please upload an MP4 or WebM file.');
       return reset();
     }
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('Only 3GB is allowed per video. This file is too large.');
+    const isDoc = file.type === 'application/pdf' ||
+      file.type === 'application/vnd.ms-powerpoint' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+      /\.(pdf|ppt|pptx)$/i.test(file.name);
+    const isVideo = file.type.startsWith('video/');
+    if (!isVideo && !isDoc) {
+      toast.error('Only MP4, WebM, PDF, and PPT/PPTX files are allowed.');
+      return reset();
+    }
+    const maxSize = isDoc ? 200 * 1024 * 1024 : MAX_FILE_SIZE; // 200MB for docs, 3GB for video
+    if (file.size > maxSize) {
+      toast.error(isDoc ? 'Documents must be under 200MB.' : 'Only 3GB is allowed per video. This file is too large.');
       return reset();
     }
     const usedBytes = files.reduce((sum, f) => sum + Number(f.fileSize ?? 0), 0);
@@ -316,22 +327,36 @@ export function WatchStage({
   };
 
   if (activeFile) {
+    const isDocument = /\.(pdf|ppt|pptx)$/i.test(activeFile.fileName) ||
+      activeFile.mimeType === 'application/pdf' ||
+      activeFile.mimeType === 'application/vnd.ms-powerpoint' ||
+      activeFile.mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
     return (
       <div className="relative h-full w-full flex items-center justify-center overflow-hidden">
         <div className="w-full h-full max-h-full flex items-center justify-center">
-          <SyncVideoPlayer
-            src={absoluteFileUrl(activeFile.filePath)}
-            state={state}
-            resumeTime={resume && resume.fileId === activeFile.id ? resume.timestamp : undefined}
-            floatingReactions={reactions}
-            waitingFor={waitingFor}
-            onReaction={onReaction}
-            onBuffering={onBuffering}
-            onPlay={onPlay}
-            onPause={onPause}
-            onSeek={onSeek}
-            onTimeUpdate={onTimeUpdate}
-          />
+          {isDocument ? (
+            <SyncDocumentViewer
+              src={absoluteFileUrl(activeFile.filePath)}
+              fileName={activeFile.fileName}
+              roomId={roomId}
+              state={state}
+            />
+          ) : (
+            <SyncVideoPlayer
+              src={absoluteFileUrl(activeFile.filePath)}
+              state={state}
+              resumeTime={resume && resume.fileId === activeFile.id ? resume.timestamp : undefined}
+              floatingReactions={reactions}
+              waitingFor={waitingFor}
+              onReaction={onReaction}
+              onBuffering={onBuffering}
+              onPlay={onPlay}
+              onPause={onPause}
+              onSeek={onSeek}
+              onTimeUpdate={onTimeUpdate}
+            />
+          )}
         </div>
         <button
           onClick={() => setActiveFile(null)}
@@ -354,9 +379,9 @@ export function WatchStage({
             <h3 className="font-display text-lg font-semibold tracking-tight">Upload Video</h3>
           </div>
           <p className="mt-1 text-xs text-text-tertiary">
-            MP4 or WebM. 3GB limit, 4GB per room. (MKV isn&apos;t supported by browsers.)
+            MP4, WebM, PDF or PPT/PPTX. Videos: 3GB limit. Documents: 200MB. Room total: 4GB.
           </p>
-          <input ref={fileInput} type="file" accept="video/mp4,video/webm" onChange={onFileSelect} className="hidden" />
+          <input ref={fileInput} type="file" accept="video/mp4,video/webm,application/pdf,.ppt,.pptx" onChange={onFileSelect} className="hidden" />
           <button
             onClick={() => fileInput.current?.click()}
             disabled={uploading || !!uploadLockedBy}
@@ -407,7 +432,11 @@ export function WatchStage({
                     className="flex items-center gap-3 overflow-hidden flex-1 text-left"
                   >
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-bg-elevated border border-white/[0.08]">
-                      <Film className="h-3.5 w-3.5 text-text-secondary" />
+                      {/\.(pdf|ppt|pptx)$/i.test(f.fileName) ? (
+                        <FileText className="h-3.5 w-3.5 text-text-secondary" />
+                      ) : (
+                        <Film className="h-3.5 w-3.5 text-text-secondary" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{f.fileName}</p>

@@ -104,6 +104,10 @@ export class ChatService {
 
     let storedContent: string | null = null;
     if (input.content) {
+      // Limit message length to prevent abuse (10KB is very generous for chat)
+      if (input.content.length > 10_000) {
+        throw new BadRequestException({ message: 'Message too long', code: 'MESSAGE_TOO_LONG' });
+      }
       const sanitized = sanitizeRichText(input.content);
       if ((input.type ?? 'text') === 'text') {
         storedContent = ENC_PREFIX + encryptText(sanitized, this.secret);

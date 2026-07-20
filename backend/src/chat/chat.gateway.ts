@@ -299,6 +299,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    // Validate emoji — max 10 chars (covers multi-codepoint emoji), no scripts
+    if (!body.emoji || body.emoji.length > 10) return;
     // Verify membership before broadcasting
     const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
     if (!ok) return;
@@ -318,6 +320,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    // Validate emoji length
+    if (!body.emoji || body.emoji.length > 10) return;
+    if (!body.messageId || !body.roomId) return;
     const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
     if (!ok) return;
     const msg = await this.prisma.message.findUnique({ where: { id: body.messageId } });

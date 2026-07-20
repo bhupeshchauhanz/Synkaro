@@ -38,7 +38,7 @@ async function bootstrap(): Promise<void> {
           connectSrc: ["'self'", 'wss:', 'ws:', 'https:', 'http:'],
           frameSrc: ["'self'", 'https://accounts.google.com'],
           mediaSrc: ["'self'", 'blob:'],
-          objectSrc: ["'none'"],
+          objectSrc: ["'self'"], // allow PDF embed via <object>/<embed>
           upgradeInsecureRequests: isProd ? [] : null,
         },
       },
@@ -51,15 +51,25 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
 
-  // Serve uploaded files (videos, backgrounds) with security headers
+  // Serve uploaded files (videos, backgrounds, documents) with security headers.
+  // Filenames are unguessable (timestamp-prefix); files auto-delete after 6 hours.
   const uploadDir = config.get<string>('UPLOAD_DIR') ?? './uploads';
   app.use(
     '/uploads',
     express.static(uploadDir, {
       maxAge: '1h',
-      setHeaders: (res) => {
+      setHeaders: (res, filePath) => {
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        // Prevent uploaded files from executing as HTML/JS in the browser context
+        res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+        res.setHeader('X-Frame-Options', 'DENY');
+        // Force download for non-media types to prevent XSS
+        const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+        const streamable = ['mp4', 'webm', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'].includes(ext);
+        if (!streamable) {
+          res.setHeader('Content-Disposition', 'attachment');
+        }
       },
     }),
   );

@@ -11,6 +11,12 @@ import type { UploadedFile } from '@prisma/client';
 // in mainstream browsers, so allowing it only leads to "failed to load" for users.
 const ALLOWED_VIDEO_MIME = ['video/mp4', 'video/webm'];
 const ALLOWED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_DOCUMENT_MIME = [
+  'application/pdf',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+];
+const ALLOWED_MIME = [...ALLOWED_VIDEO_MIME, ...ALLOWED_IMAGE_MIME, ...ALLOWED_DOCUMENT_MIME];
 const UPLOAD_ID_PATTERN = /^[a-zA-Z0-9_-]{8,64}$/;
 const MAX_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
 const MAX_ROOM_SIZE = 4 * 1024 * 1024 * 1024; // 4GB
@@ -46,6 +52,10 @@ export class UploadService {
     if (!UPLOAD_ID_PATTERN.test(uploadId)) {
       throw new BadRequestException({ message: 'Invalid upload ID', code: 'INVALID_UPLOAD_ID' });
     }
+    // Validate chunkIndex to prevent path traversal (e.g. negative or absurdly large values)
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 100_000) {
+      throw new BadRequestException({ message: 'Invalid chunk index', code: 'INVALID_CHUNK_INDEX' });
+    }
     const dir = path.join(this.tmpDir, uploadId);
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, `${chunkIndex}.part`), buffer);
@@ -55,9 +65,9 @@ export class UploadService {
 
   async finalize(input: FinalizeInput): Promise<UploadedFile> {
     const { uploadId, roomId, userId, fileName, totalChunks, mimeType } = input;
-    if (!ALLOWED_VIDEO_MIME.includes(mimeType) && !ALLOWED_IMAGE_MIME.includes(mimeType)) {
+    if (!ALLOWED_MIME.includes(mimeType)) {
       throw new BadRequestException({
-        message: `Unsupported file type: ${mimeType}. Allowed: MP4, WebM, JPEG, PNG, GIF, WebP`,
+        message: `Unsupported file type: ${mimeType}. Allowed: MP4, WebM, JPEG, PNG, GIF, WebP, PDF, PPT/PPTX`,
         code: 'UNSUPPORTED_MIME',
       });
     }
