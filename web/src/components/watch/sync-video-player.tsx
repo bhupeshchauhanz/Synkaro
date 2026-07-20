@@ -1,7 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, Play, Volume2, Volume1, VolumeX, RotateCcw, RotateCw, RefreshCw, Loader2 } from 'lucide-react';
+import { Pause, Play, Volume2, Volume1, VolumeX, RotateCcw, RotateCw, RefreshCw, Loader2, Scan, Maximize2, ZoomIn } from 'lucide-react';
+
+type VideoFit = 'fit' | 'fill' | 'zoom';
+const FIT_ORDER: VideoFit[] = ['fit', 'fill', 'zoom'];
+const FIT_META: Record<VideoFit, { label: string; icon: typeof Scan }> = {
+  fit: { label: 'Fit', icon: Scan },
+  fill: { label: 'Fill', icon: Maximize2 },
+  zoom: { label: 'Zoom', icon: ZoomIn },
+};
 import { formatTime } from '@/lib/utils';
 import type { WatchStateDto } from '@/lib/socket';
 
@@ -58,6 +66,7 @@ export function SyncVideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const [hoverPct, setHoverPct] = useState<number | null>(null);
   const [slowNet, setSlowNet] = useState(false);
+  const [videoFit, setVideoFit] = useState<VideoFit>('fit'); // default Fit; toggle to Fill/Zoom
   const hideTimer = useRef<NodeJS.Timeout | null>(null);
   const bufferTimer = useRef<NodeJS.Timeout | null>(null);
   const bufferingReported = useRef(false);
@@ -263,7 +272,11 @@ export function SyncVideoPlayer({
         src={src}
         playsInline
         preload="auto"
-        className="w-full h-full max-h-full object-contain bg-black cursor-pointer"
+        className="w-full h-full max-h-full bg-black cursor-pointer transition-transform duration-200"
+        style={{
+          objectFit: videoFit === 'fit' ? 'contain' : 'cover',
+          transform: videoFit === 'zoom' ? 'scale(1.25)' : 'scale(1)',
+        }}
         onClick={togglePlay}
         onPlay={() => { setIsPlaying(true); resetHideTimer(); }}
         onPause={() => { setIsPlaying(false); setShowControls(true); }}
@@ -421,6 +434,20 @@ export function SyncVideoPlayer({
                 <RefreshCw className="h-3 w-3" /> Resync
               </button>
             )}
+            {/* Fit / Fill / Zoom toggle for the video content */}
+            {(() => {
+              const Icon = FIT_META[videoFit].icon;
+              return (
+                <button
+                  onClick={() => setVideoFit(FIT_ORDER[(FIT_ORDER.indexOf(videoFit) + 1) % FIT_ORDER.length])}
+                  className="flex items-center gap-1 rounded-full p-1.5 hover:bg-white/10 transition-colors"
+                  title={`Display: ${FIT_META[videoFit].label} (tap to change)`}
+                  aria-label="Change video display mode"
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              );
+            })()}
           </div>
         </div>
       </div>

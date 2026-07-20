@@ -1,5 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as path from 'path';
+import * as fs from 'fs/promises';
 import { PrismaService } from '../prisma/prisma.service';
 import { sanitizeRichText } from '../common/utils/sanitize.util';
 import { encryptText, decryptText, ENC_PREFIX } from '../common/utils/crypto.util';
@@ -33,6 +35,7 @@ export interface MessageDto {
 @Injectable()
 export class ChatService {
   private readonly secret: string;
+  private readonly uploadDir: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -41,6 +44,18 @@ export class ChatService {
     const encKey = config.get<string>('CHAT_ENCRYPTION_KEY') ?? config.get<string>('JWT_SECRET');
     if (!encKey) throw new Error('CHAT_ENCRYPTION_KEY or JWT_SECRET env var is required');
     this.secret = encKey;
+    this.uploadDir = config.get<string>('UPLOAD_DIR') ?? path.join(process.cwd(), 'uploads');
+  }
+
+  /** If a message's fileUrl points to a stored file, remove it from disk. */
+  private async deleteFileUrlFromDisk(fileUrl: string | null): Promise<void> {
+    if (!fileUrl || !fileUrl.startsWith('/uploads/')) return; // base64 data URLs need no disk cleanup
+    try {
+      const abs = path.join(this.uploadDir, fileUrl.replace(/^\/uploads\//, ''));
+      await fs.unlink(abs);
+    } catch {
+      /* file already gone — ignore */
+    }
   }
 
   async createMessage(input: CreateMessageInput): Promise<MessageDto> {
@@ -119,6 +134,8 @@ export class ChatService {
     if (msg.senderId !== userId) {
       throw new ForbiddenException({ message: 'Cannot delete others messages', code: 'NOT_OWNER' });
     }
+    // Remove any attached image/file from disk before clearing the record
+    await this.deleteFileUrlFromDisk(msg.fileUrl);
     await this.prisma.message.update({
       where: { id: messageId },
       data: { deletedAt: new Date(), content: null, fileUrl: null },

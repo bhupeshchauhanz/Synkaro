@@ -63,6 +63,16 @@ export class AdminController {
     return this.admin.getRooms(Number(page) || 1, Number(limit) || 20);
   }
 
+  // Must be declared BEFORE `rooms/:id` so "export" isn't treated as an id.
+  @Get('rooms/export')
+  @IsAdmin()
+  async exportRooms(@Res() res: Response): Promise<void> {
+    const csv = await this.admin.exportRoomsCsv();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="synkaro-rooms.csv"');
+    res.send(csv);
+  }
+
   @Get('rooms/:id')
   @IsAdmin()
   async room(@Param('id') id: string) {

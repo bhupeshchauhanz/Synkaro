@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2, Loader2, Users, Heart, Video, MessageSquare } from 'lucide-react';
+import { Trash2, Loader2, Users, Heart, Video, Download, X } from 'lucide-react';
 import { api, getApiError } from '@/lib/api';
 import { toast } from '@/lib/toast';
 
@@ -17,12 +17,57 @@ interface Room {
   createdAt: string;
 }
 
+interface RoomDetail {
+  id: string;
+  name: string;
+  nickname: string | null;
+  type: string;
+  inviteCode: string;
+  createdAt: string;
+  messageCount: number;
+  members: { id: string; username: string; email: string; role: string }[];
+  files: { id: string; fileName: string; fileSizeMB: number }[];
+}
+
 export default function AdminRoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [detail, setDetail] = useState<RoomDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const res = await api.get('/admin/rooms/export', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'synkaro-rooms.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(getApiError(err).error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openDetail = async (id: string) => {
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      const res = await api.get<RoomDetail>(`/admin/rooms/${id}`);
+      setDetail(res.data);
+    } catch (err) {
+      toast.error(getApiError(err).error);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const fetchRooms = async (p: number) => {
     setLoading(true);
@@ -62,6 +107,10 @@ export default function AdminRoomsPage() {
           <Video className="h-6 w-6 text-text-secondary" />
           <h1 className="font-display text-2xl font-bold tracking-tight">Rooms ({total})</h1>
         </div>
+        <button onClick={exportCsv} disabled={exporting} className="btn-ghost text-xs">
+          {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          Export CSV
+        </button>
       </div>
 
       <div className="card overflow-hidden">
@@ -91,7 +140,7 @@ export default function AdminRoomsPage() {
                 </tr>
               ) : (
                 rooms.map((r) => (
-                  <tr key={r.id} className="border-b border-border hover:bg-white/[0.02] transition-colors">
+                  <tr key={r.id} onClick={() => openDetail(r.id)} className="border-b border-border hover:bg-white/[0.02] transition-colors cursor-pointer">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/[0.06] border border-white/[0.08]">
@@ -123,7 +172,7 @@ export default function AdminRoomsPage() {
                     <td className="py-3 px-4 text-text-tertiary text-xs">{new Date(r.createdAt).toLocaleDateString()}</td>
                     <td className="py-3 px-4">
                       <button
-                        onClick={() => handleDelete(r.id, r.name)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(r.id, r.name); }}
                         disabled={deleting === r.id}
                         className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                         title="Delete room"
@@ -154,6 +203,69 @@ export default function AdminRoomsPage() {
           </button>
         </div>
       ) : null}
+
+      {/* Room detail modal */}
+      {(detail || detailLoading) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => { setDetail(null); setDetailLoading(false); }}
+        >
+          <div className="card w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {detailLoading || !detail ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-text-tertiary" /></div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white/[0.06] border border-white/[0.08]">
+                      {detail.type === 'couple' ? <Heart className="h-4 w-4" fill="currentColor" /> : <Users className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <h2 className="font-display text-xl font-bold tracking-tight">{detail.nickname || detail.name}</h2>
+                      <p className="text-[11px] text-text-tertiary font-mono">Code: {detail.inviteCode} · {detail.type}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setDetail(null)} className="text-text-tertiary hover:text-text-primary"><X className="h-5 w-5" /></button>
+                </div>
+
+                <dl className="mt-4 space-y-1.5 text-sm">
+                  <div className="flex justify-between gap-4"><dt className="text-text-tertiary">Room ID</dt><dd className="font-mono text-[11px] text-right break-all">{detail.id}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-text-tertiary">Messages</dt><dd>{detail.messageCount}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-text-tertiary">Files</dt><dd>{detail.files.length}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-text-tertiary">Created</dt><dd>{new Date(detail.createdAt).toLocaleString()}</dd></div>
+                </dl>
+
+                <p className="mt-5 mb-2 text-xs uppercase tracking-wider text-text-tertiary">Members ({detail.members.length})</p>
+                <div className="space-y-1.5">
+                  {detail.members.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{m.username}</p>
+                        <p className="truncate text-[11px] text-text-tertiary">{m.email}</p>
+                      </div>
+                      <span className="text-[11px] text-text-tertiary shrink-0">{m.role}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {detail.files.length > 0 ? (
+                  <>
+                    <p className="mt-5 mb-2 text-xs uppercase tracking-wider text-text-tertiary">Files</p>
+                    <div className="space-y-1.5">
+                      {detail.files.map((f) => (
+                        <div key={f.id} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2 text-sm">
+                          <span className="truncate">{f.fileName}</span>
+                          <span className="text-[11px] text-text-tertiary shrink-0">{f.fileSizeMB} MB</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

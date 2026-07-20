@@ -194,6 +194,32 @@ export class AdminService {
     };
   }
 
+  /** Export every room as CSV: room name, id, invite code, type, users, counts. */
+  async exportRoomsCsv(): Promise<string> {
+    const rooms = await this.prisma.room.findMany({
+      include: {
+        members: { include: { user: { select: { username: true } } } },
+        _count: { select: { messages: true, files: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const header = ['roomId', 'roomName', 'inviteCode', 'type', 'memberCount', 'users', 'messages', 'files', 'createdAt'];
+    const esc = (v: unknown) => {
+      const s = v === null || v === undefined ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [header.join(',')];
+    for (const r of rooms) {
+      lines.push([
+        r.id, r.name, r.inviteCode, r.type, r.members.length,
+        r.members.map((m) => m.user.username).join(' | '),
+        r._count.messages, r._count.files, r.createdAt.toISOString(),
+      ].map(esc).join(','));
+    }
+    return lines.join('\n');
+  }
+
   async getRooms(page = 1, limit = 20) {
     const [rooms, total] = await Promise.all([
       this.prisma.room.findMany({
