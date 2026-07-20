@@ -53,14 +53,15 @@ function TechCard({ t }: { t: Tech }) {
 }
 
 const FEATURES: { icon: string; title: string; desc: string }[] = [
-  { icon: '🎬', title: 'Synced watch-together', desc: 'Latency-compensated playback with smooth playbackRate drift correction, a buffering "pause & wait" so no one is force-skipped, and resume-where-you-left-off.' },
-  { icon: '📹', title: 'HD voice & video calls', desc: 'LiveKit (WebRTC) with adaptive streaming, poor-network auto camera-off, portrait-aware tiles and pin-to-focus.' },
-  { icon: '💬', title: 'Real-time chat', desc: 'Encrypted messages, typing, read receipts, WhatsApp-style persisted reactions with a who-reacted sheet, and reliable delivery with server acks.' },
-  { icon: '🔔', title: 'App-wide notifications', desc: 'Sound + browser notification + toast for new messages and incoming calls, with a global accept/decline popup.' },
-  { icon: '🔒', title: 'Secure by default', desc: 'JWT + refresh cookies, Helmet CSP, room-membership authorization on every socket event, sanitized input.' },
-  { icon: '🛠️', title: 'Admin analytics', desc: 'Signup/message/room trends, room-type split, storage usage, user detail and CSV export.' },
-  { icon: '👥', title: 'Couple & friend rooms', desc: 'Couple rooms (max 2) center your partner; friend rooms (max 4) use a responsive grid. A completed profile is required to create or join.' },
-  { icon: '⬆️', title: 'Resilient uploads', desc: 'Chunked uploads up to 3GB/video and 4GB/room, streamed to disk with a single-uploader lock and network-drop resume.' },
+  { icon: '🎬', title: 'Synced watch-together', desc: 'Latency-compensated playback with smooth playbackRate drift correction, a buffering "pause & wait" so no one is force-skipped, resume-where-you-left-off, and three display modes (Fit/Fill/Zoom).' },
+  { icon: '📄', title: 'Document sharing', desc: 'Upload PDFs with synced page navigation + zoom, or PPT/PPTX with instant download. Documents render alongside the same library used for video.' },
+  { icon: '📹', title: 'HD voice & video calls', desc: 'LiveKit (WebRTC SFU) with adaptive streaming, dynacast, poor-network auto camera-off, portrait-aware tiles, pin-to-focus, and call effects.' },
+  { icon: '💬', title: 'Real-time chat', desc: 'Encrypted messages (AES-256-CBC), typing, read receipts, WhatsApp-style persisted reactions with a who-reacted sheet, image lightbox, and reliable delivery.' },
+  { icon: '🔔', title: 'App-wide notifications', desc: 'Sound + browser notification + toast for new messages and incoming calls, with a global accept/decline popup and per-room mute.' },
+  { icon: '🔒', title: 'Secure by default', desc: 'JWT + httpOnly cookies, Helmet CSP/HSTS, rate limiting, room-membership auth on every socket event, DOMPurify sanitization, and Content-Disposition on uploads.' },
+  { icon: '👥', title: 'Couple & friend rooms', desc: 'Couple rooms (max 2) center your partner; friend rooms (max 4) use a responsive grid. Custom backgrounds, nicknames, and profile gate.' },
+  { icon: '⬆️', title: 'Resilient uploads', desc: 'Chunked uploads up to 3GB/video and 200MB/document (4GB/room), streamed to disk, single-uploader lock, path-traversal-safe, with network-drop resume.' },
+  { icon: '🛠️', title: 'Admin analytics', desc: 'Signup/message/room trends, room-type split, storage usage, room member inspection, user detail and CSV export.' },
 ];
 
 export default function SystemDesignPage() {
@@ -235,10 +236,12 @@ export default function SystemDesignPage() {
             <ul className="grid gap-3 text-sm text-text-secondary md:grid-cols-2">
               <li>• JWT access + refresh tokens in httpOnly cookies, with silent refresh.</li>
               <li>• Every WebSocket event verifies room membership server-side.</li>
-              <li>• Helmet CSP, HSTS, nosniff and cross-origin policies at the API.</li>
-              <li>• Chat content encrypted at rest; input sanitized (DOMPurify).</li>
-              <li>• Uploads: chunked, size/type validated, per-room storage caps, single-uploader lock.</li>
-              <li>• Rate limiting via Nest throttler on sensitive routes.</li>
+              <li>• Helmet CSP, HSTS, X-Content-Type-Options, and CORS restricted to production origin.</li>
+              <li>• Chat content encrypted at rest (AES-256-CBC); all input sanitized (DOMPurify).</li>
+              <li>• Uploads: chunked with path-traversal-safe chunk index validation, per-room storage caps, single-uploader lock, and Content-Disposition on non-media files.</li>
+              <li>• Global rate limiting (100/min) + stricter on auth routes (signup 5, login 10, OTP/reset 3).</li>
+              <li>• Message content capped at 10KB; emoji reaction length validated (max 10 chars).</li>
+              <li>• Uploaded files auto-expire after 6 hours; filenames are timestamp-prefixed and unguessable.</li>
             </ul>
           </div>
         </section>

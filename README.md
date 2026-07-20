@@ -18,22 +18,34 @@ A high-performance, real-time synchronized media sharing and communication platf
 ## Features
 
 - **Real-time voice & video calls** (LiveKit / WebRTC) — adaptive streaming + dynacast, poor-network auto camera-off with a notification to everyone, portrait-aware tiles with three display modes (Smart Fill / Fit / Smart Zoom) via a per-tile menu, pin-to-focus, camera-off avatar, and call sound effects (incoming/outgoing ring, join/leave, airhorn).
-- **Watch together** — upload a video and play it in sync for everyone: latency-compensated playback with smooth `playbackRate` drift correction, a **buffering pause-to-wait** so a slow viewer is never force-skipped, **resume-where-you-left-off** (exact position saved as you watch and flushed on exit), playback attribution ("X paused"), floating emoji reactions, and three content display modes (Fit / Fill / Zoom). A custom player with a buffered/hover-preview **seek bar** and a **volume slider**.
-- **In-call Watch mode** — from a call, one tap opens watch-together for **all** participants: the synced player + library fill the main area while call tiles, controls and chat sit in the sidebar (couple = vertical stack, friends = horizontal strip). Opening a video selects it for everyone, and a **single-uploader lock** prevents upload clashes.
-- **Couple & friend rooms** — couple rooms (max **2**) put your partner front-and-center (70/30 with self + chat); friend rooms (max **4**) use a responsive grid.
+- **Watch together** — upload a video (MP4/WebM), PDF or presentation (PPT/PPTX) and view it in sync for everyone: latency-compensated playback with smooth `playbackRate` drift correction, a **buffering pause-to-wait** so a slow viewer is never force-skipped, **resume-where-you-left-off** (exact position saved continuously and flushed on exit), playback attribution ("X paused"), floating emoji reactions, and three content display modes (Fit / Fill / Zoom). PDFs render with synced page navigation + zoom. A custom player with a buffered/hover-preview **seek bar** and a **volume slider**.
+- **In-call Watch mode** — from a call, one tap opens watch-together for **all** participants: the synced player + library fill the main area while call tiles, controls and chat sit in the sidebar (couple = vertical stack, friends = horizontal strip). Opening a file selects it for everyone, and a **single-uploader lock** prevents upload clashes.
+- **Couple & friend rooms** — couple rooms (max **2**) put your partner front-and-center (70/30 with self + chat); friend rooms (max **4**) use a responsive grid. Room settings include custom backgrounds (presets + upload), nicknames, mute toggle, and a danger zone (delete for host, leave for members).
 - **Chat** — encrypted at rest, typing indicators, read receipts, **WhatsApp-style persisted reactions** (with a who-reacted sheet, tap to add/remove your own), image lightbox, reliable delivery via server acks, and re-sync on reconnect.
 - **App-wide notifications** — new-message sound + browser notification + toast on any page, per-room unread indicators, and a **global incoming-call popup** (accept / decline). Couple / two-person calls hang up instantly on decline or drop.
 - **Profile gate** — a completed profile (bio, phone, date of birth) is required before creating or joining a room (avatar optional).
-- **Admin** — trend charts (signups / messages / rooms), room-type split, storage usage, a user-detail view, **CSV export**, and user/room management.
-- **Chunked uploads** — up to 3GB per video, 4GB per room, with fast client-side pre-checks (format / size / room space) and automatic chunk retries.
+- **Admin** — trend charts (signups / messages / rooms), room-type split, storage usage, a user-detail view, room member inspection, **CSV export**, and user/room management.
+- **Chunked uploads** — up to 3GB per video (200MB for documents), 4GB per room, with fast client-side pre-checks (format / size / room space), automatic chunk retries, and network-loss resume (2-minute wait).
 
 ## Technology Stack
 
 - **Frontend:** Next.js 14 (App Router, React 18), TailwindCSS, Zustand, Radix UI, Framer Motion
 - **Backend:** NestJS 10, Prisma ORM, Socket.IO
 - **Database / Cache:** PostgreSQL 15, Redis 7
-- **RTC Engine:** LiveKit
-- **Deployment:** Docker, Nginx
+- **RTC Engine:** LiveKit (self-hosted SFU)
+- **Deployment:** Docker Compose, Nginx (TLS + reverse proxy)
+
+## Security
+
+| Layer | Measure |
+|-------|---------|
+| Auth | bcrypt (12 rounds), JWT access + httpOnly refresh cookies, silent refresh, OTP brute-force protection (5 attempts max) |
+| Transport | HTTPS (Cloudflare + Nginx TLS), HSTS in production, WSS for sockets |
+| API | Helmet CSP, X-Content-Type-Options, CORS restricted to `WEB_URL`, global rate limiting (100/min), stricter on auth routes (3–10/min) |
+| WebSocket | JWT auth on connection, room membership verified on every single event |
+| Data | Chat encrypted at rest (AES-256-CBC), DOMPurify input sanitization, no raw HTML rendering |
+| Uploads | Chunk index + uploadId validation (path-traversal safe), Content-Disposition: attachment for non-media, CSP on static assets, unguessable filenames, 6-hour auto-expiry |
+| Messages | 10KB length limit, emoji reaction length capped (10 chars), message metadata tamper-safe |
 
 ## Real-time & call behavior (notes)
 
@@ -49,7 +61,8 @@ Inside a call, tap the **TV** button to switch to watch-together: the synced pla
 ### Known limitations
 
 - **Per-user adaptive quality for uploaded MP4** is not implemented — true adaptive bitrate needs a server-side HLS/DASH transcoding pipeline (ffmpeg producing multiple renditions). Uploaded videos are served as-is; the player shows a "Slow network" hint and handles buffering, and call video already adapts via LiveKit.
-- **MKV** is not accepted — browsers cannot play Matroska in `<video>`. Use MP4 or WebM.
+- **MKV / AVI / MOV** are not accepted — browsers cannot play these in `<video>`. Use MP4 or WebM.
+- **PPT/PPTX** cannot render in the browser — the viewer shows a download card so users can open it in their presentation app. PDF renders natively.
 
 ## Local development
 

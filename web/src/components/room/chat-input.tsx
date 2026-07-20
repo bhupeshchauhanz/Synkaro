@@ -64,7 +64,7 @@ export function ChatInput({
     if (imageFile) {
       setUploading(true);
       try {
-        // Convert to base64 and send as image message
+        // Convert to base64 and send as image message (with optional caption)
         const reader = new FileReader();
         reader.onload = () => {
           sendChatMessage(
@@ -84,11 +84,11 @@ export function ChatInput({
       } finally {
         setUploading(false);
       }
-    }
-
-    if (trimmed) {
+    } else if (trimmed) {
+      // Text-only message (no image attached)
       onSend(trimmed);
     }
+
     setText('');
     onTypingStop();
     inputRef.current?.focus();
