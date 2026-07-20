@@ -18,6 +18,9 @@ interface JwtPayload {
 @Injectable()
 export class WsAuthService {
   private readonly logger = new Logger(WsAuthService.name);
+  // In-memory membership cache: Map<"userId:roomId", expireTimestamp>
+  // Entries auto-expire after 60s to pick up membership changes reasonably fast.
+  private readonly memberCache = new Map<string, number>();
 
   constructor(
     private readonly jwt: JwtService,
@@ -46,10 +49,26 @@ export class WsAuthService {
   }
 
   async assertRoomMember(userId: string, roomId: string): Promise<boolean> {
+    const key = `${userId}:${roomId}`;
+    const cached = this.memberCache.get(key);
+    if (cached && cached > Date.now()) return true;
+
     const member = await this.prisma.roomMember.findUnique({
       where: { roomId_userId: { roomId, userId } },
     });
-    return !!member;
+    if (member) {
+      // Cache positive result for 60s — reduces DB hits on hot paths (typing, reactions, messages)
+      this.memberCache.set(key, Date.now() + 60_000);
+      return true;
+    }
+    // Remove stale positive cache if member was removed
+    this.memberCache.delete(key);
+    return false;
+  }
+
+  /** Invalidate cache when a member leaves or is removed. */
+  invalidateMember(userId: string, roomId: string): void {
+    this.memberCache.delete(`${userId}:${roomId}`);
   }
 
   private extractToken(socket: Socket): string | null {

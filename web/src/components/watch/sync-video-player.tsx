@@ -54,6 +54,7 @@ export function SyncVideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastApplied = useRef<{ ts: number; isPlaying: boolean } | null>(null);
+  const timeUpdateFrame = useRef<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -130,25 +131,28 @@ export function SyncVideoPlayer({
 
   // Smooth continuous drift correction: nudge playbackRate instead of jumping,
   // so nobody gets a jarring forward-skip. Big drifts still hard-align.
+  // Runs every 800ms for tighter sync convergence (~2 cycles to correct 0.5s drift).
   useEffect(() => {
     if (!state?.isPlaying) return;
+    let lastSynced = true;
     const id = setInterval(() => {
       const v = videoRef.current;
       if (!v || v.paused || waitingFor) return;
       const target = state.timestamp + (Date.now() - state.updatedAt) / 1000;
       const drift = v.currentTime - target; // + ahead, - behind
-      if (Math.abs(drift) > 3) {
+      if (Math.abs(drift) > 2.5) {
         v.currentTime = Math.max(0, target);
         v.playbackRate = 1;
-      } else if (drift > 0.4) {
-        v.playbackRate = 0.95;
-      } else if (drift < -0.4) {
-        v.playbackRate = 1.05;
+      } else if (drift > 0.3) {
+        v.playbackRate = 0.93;
+      } else if (drift < -0.3) {
+        v.playbackRate = 1.07;
       } else {
         v.playbackRate = 1;
       }
-      setSynced(Math.abs(drift) < 1.2);
-    }, 1500);
+      const nowSynced = Math.abs(drift) < 1;
+      if (nowSynced !== lastSynced) { lastSynced = nowSynced; setSynced(nowSynced); }
+    }, 800);
     return () => {
       clearInterval(id);
       const v = videoRef.current;
@@ -282,9 +286,14 @@ export function SyncVideoPlayer({
         onPause={() => { setIsPlaying(false); setShowControls(true); }}
         onTimeUpdate={(e) => {
           const v = e.currentTarget;
-          setTime(v.currentTime);
-          if (v.buffered.length) {
-            setBuffered((v.buffered.end(v.buffered.length - 1) / (v.duration || 1)) * 100);
+          // Throttle UI time updates to ~4Hz to avoid 60fps re-renders
+          const now = Date.now();
+          if (now - timeUpdateFrame.current > 250) {
+            timeUpdateFrame.current = now;
+            setTime(v.currentTime);
+            if (v.buffered.length) {
+              setBuffered((v.buffered.end(v.buffered.length - 1) / (v.duration || 1)) * 100);
+            }
           }
           if (onTimeUpdate) onTimeUpdate(v.currentTime, v.duration);
         }}

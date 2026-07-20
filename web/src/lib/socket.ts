@@ -9,8 +9,13 @@ export function getSocket(): Socket {
   const url = process.env.NEXT_PUBLIC_WS_URL || '';
   socket = io(url, {
     withCredentials: true,
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'], // fallback to polling if WS blocked (corporate proxies)
     autoConnect: true,
+    reconnection: true,
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: 20,
+    timeout: 10000,
   });
   return socket;
 }

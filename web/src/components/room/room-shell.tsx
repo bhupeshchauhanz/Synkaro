@@ -69,6 +69,7 @@ export function RoomShell({ roomId }: { roomId: string }) {
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const typingTimeout = useRef<NodeJS.Timeout | null>(null);
+  const messagesLoaded = useRef(false);
 
   // Request notification permissions
   useEffect(() => {
@@ -94,6 +95,7 @@ export function RoomShell({ roomId }: { roomId: string }) {
     ]);
     setRoom(roomRes.data);
     setMessages(msgRes.data);
+    messagesLoaded.current = true;
   };
 
   useEffect(() => {
@@ -116,11 +118,14 @@ export function RoomShell({ roomId }: { roomId: string }) {
 
     const onConnect = () => {
       socket.emit('room:join', { roomId });
-      // Resync messages missed while the socket was disconnected/offline
-      api
-        .get<MessageDto[]>(`/rooms/${roomId}/messages`)
-        .then((res) => setMessages(res.data))
-        .catch(() => undefined);
+      // Only resync messages if we were previously connected and reconnected
+      // (i.e., socket dropped and came back). On initial mount, fetchRoom() already loaded messages.
+      if (messagesLoaded.current) {
+        api
+          .get<MessageDto[]>(`/rooms/${roomId}/messages`)
+          .then((res) => setMessages(res.data))
+          .catch(() => undefined);
+      }
     };
     if (socket.connected) onConnect();
     socket.on('connect', onConnect);
@@ -128,7 +133,12 @@ export function RoomShell({ roomId }: { roomId: string }) {
     const onMessage = (m: MessageDto) => {
       // Message notifications (sound/toast/browser) are handled globally by
       // <GlobalNotifications/> so they work on any page without duplication.
-      setMessages((prev) => (prev.find((p) => p.id === m.id) ? prev : [...prev, m]));
+      setMessages((prev) => {
+        // O(1) dedup check using the last few IDs (messages arrive in order)
+        if (prev.length > 0 && prev[prev.length - 1].id === m.id) return prev;
+        if (prev.some((p) => p.id === m.id)) return prev;
+        return [...prev, m];
+      });
     };
     const onDeleted = ({ messageId }: { messageId: string }) =>
       setMessages((prev) => prev.filter((m) => m.id !== messageId));

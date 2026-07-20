@@ -70,36 +70,38 @@ export class ChatService {
       }
     }
 
-    // Check room chat size limit (25MB). This is a best-effort housekeeping step —
-    // it must NEVER prevent a message from being saved, so any failure is swallowed.
-    try {
-      const currentSize = await this.prisma.$queryRaw<[{total: bigint}]>`
-        SELECT COALESCE(SUM(LENGTH(COALESCE(content, '')) + LENGTH(COALESCE("fileUrl", ''))), 0) as total
-        FROM "Message"
-        WHERE "roomId" = ${input.roomId} AND "deletedAt" IS NULL
-      `;
-      const currentBytes = Number(currentSize[0]?.total ?? 0);
+    // Check room chat size limit (25MB). Best-effort housekeeping — runs on ~2% of
+    // messages (probabilistic) so it doesn't add latency to every send.
+    if (Math.random() < 0.02) {
+      try {
+        const currentSize = await this.prisma.$queryRaw<[{total: bigint}]>`
+          SELECT COALESCE(SUM(LENGTH(COALESCE(content, '')) + LENGTH(COALESCE("fileUrl", ''))), 0) as total
+          FROM "Message"
+          WHERE "roomId" = ${input.roomId} AND "deletedAt" IS NULL
+        `;
+        const currentBytes = Number(currentSize[0]?.total ?? 0);
 
-      if (currentBytes > MAX_ROOM_CHAT_SIZE_BYTES) {
-        // Auto-cleanup: delete oldest 20% of messages
-        const deleteCount = Math.max(1, Math.floor(await this.prisma.message.count({
-          where: { roomId: input.roomId, deletedAt: null },
-        }) * 0.2));
+        if (currentBytes > MAX_ROOM_CHAT_SIZE_BYTES) {
+          // Auto-cleanup: delete oldest 20% of messages
+          const deleteCount = Math.max(1, Math.floor(await this.prisma.message.count({
+            where: { roomId: input.roomId, deletedAt: null },
+          }) * 0.2));
 
-        const oldestMessages = await this.prisma.message.findMany({
-          where: { roomId: input.roomId, deletedAt: null },
-          orderBy: { createdAt: 'asc' },
-          take: deleteCount,
-          select: { id: true },
-        });
+          const oldestMessages = await this.prisma.message.findMany({
+            where: { roomId: input.roomId, deletedAt: null },
+            orderBy: { createdAt: 'asc' },
+            take: deleteCount,
+            select: { id: true },
+          });
 
-        await this.prisma.message.updateMany({
-          where: { id: { in: oldestMessages.map(m => m.id) } },
-          data: { deletedAt: new Date(), content: null, fileUrl: null },
-        });
+          await this.prisma.message.updateMany({
+            where: { id: { in: oldestMessages.map(m => m.id) } },
+            data: { deletedAt: new Date(), content: null, fileUrl: null },
+          });
+        }
+      } catch {
+        // ignore housekeeping errors — saving the message below is what matters
       }
-    } catch {
-      // ignore housekeeping errors — saving the message below is what matters
     }
 
     let storedContent: string | null = null;
