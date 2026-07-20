@@ -58,6 +58,7 @@ export function WatchStage({
   const fileInput = useRef<HTMLInputElement>(null);
   const lastWatchAction = useRef<{ by: string; at: number }>({ by: '', at: 0 });
   const lastReported = useRef<number>(0);
+  const lastPos = useRef<{ fileId: string; ts: number; dur: number } | null>(null);
   const bufferingUsers = useRef<Map<string, string>>(new Map());
   const iHoldLock = useRef(false);
   const filesRef = useRef<UploadedFile[]>([]);
@@ -197,11 +198,37 @@ export function WatchStage({
 
   const onTimeUpdate = (ts: number, dur: number) => {
     if (!activeFile) return;
+    lastPos.current = { fileId: activeFile.id, ts, dur };
     const bucket = Math.floor(ts / 5);
     if (bucket === lastReported.current) return;
     lastReported.current = bucket;
     void api.post(`/rooms/${roomId}/watch/history`, { fileId: activeFile.id, timestamp: ts, duration: dur });
   };
+
+  // Flush the exact last position when leaving the page or closing the player
+  // so "resume where you left off" is precise (not just the last 5s bucket).
+  useEffect(() => {
+    const flush = () => {
+      const p = lastPos.current;
+      if (!p || p.ts < 5) return;
+      const base = (process.env.NEXT_PUBLIC_API_URL ?? '/api').replace(/\/$/, '');
+      const url = `${base}/rooms/${roomId}/watch/history`;
+      // Auth is cookie-based (withCredentials), so a keepalive fetch with
+      // credentials survives navigation and still authenticates.
+      void fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ fileId: p.fileId, timestamp: p.ts, duration: p.dur }),
+        keepalive: true,
+      }).catch(() => undefined);
+    };
+    window.addEventListener('pagehide', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
+  }, [roomId]);
 
   const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

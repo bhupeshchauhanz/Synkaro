@@ -296,7 +296,10 @@ export function SyncVideoPlayer({
           const v = e.currentTarget;
           setDuration(v.duration);
           setLoading(false);
-          if (!state && resumeTime && resumeTime > 5 && resumeTime < v.duration - 5) {
+          // Resume where you left off: apply saved position when there's no
+          // active shared play-state, or the shared state is paused. This makes
+          // "resume" work for solo watching and when re-opening a paused video.
+          if ((!state || !state.isPlaying) && resumeTime && resumeTime > 5 && resumeTime < v.duration - 5) {
             v.currentTime = resumeTime;
             setTime(resumeTime);
           }

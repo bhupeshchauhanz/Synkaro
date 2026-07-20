@@ -266,7 +266,7 @@ export function MessageList({
             <div className="rounded-2xl border border-white/[0.1] bg-[#1c1c1e]/98 backdrop-blur-2xl shadow-2xl overflow-hidden w-[200px]">
               {/* Quick reactions row */}
               <div className="px-3 pt-3 pb-2">
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                   {REACTION_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
@@ -357,7 +357,7 @@ export function MessageList({
                 </div>
 
                 {/* Quick react row — tap to add/remove your reaction */}
-                <div className="px-4 py-3 flex items-center justify-center gap-1 border-b border-white/[0.08]">
+                <div className="px-4 py-3 flex flex-wrap items-center justify-center gap-1 border-b border-white/[0.08]">
                   {REACTION_EMOJIS.map((emoji) => {
                     const mine = (reactions[emoji] ?? []).includes(currentUserId);
                     return (

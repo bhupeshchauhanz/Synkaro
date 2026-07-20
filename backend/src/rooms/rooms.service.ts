@@ -36,7 +36,7 @@ export class RoomsService {
   ): Promise<Room> {
     await this.assertProfileComplete(userId);
     const inviteCode = await this.uniqueInviteCode();
-    const maxMembers = type === 'couple' ? 2 : 6;
+    const maxMembers = type === 'couple' ? 2 : 4;
 
     return this.prisma.room.create({
       data: {
