@@ -31,7 +31,7 @@ export const ParticipantVideo = memo(function ParticipantVideo({
   micOn?: boolean;
   isLocal?: boolean;
 }) {
-  const [mode, setMode] = useState<FitMode>('fill');
+  const [mode, setMode] = useState<FitMode>('fit');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

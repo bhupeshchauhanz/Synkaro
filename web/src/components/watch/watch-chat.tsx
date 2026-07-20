@@ -108,7 +108,7 @@ export function WatchChat({ roomId, currentUserId }: { roomId: string; currentUs
       <div className="shrink-0 border-b border-white/[0.06] px-3 py-2 bg-black/40">
         <h3 className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Live Chat</h3>
       </div>
-      <div className="flex-1 overflow-hidden min-h-0">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <MessageList messages={messages} currentUserId={currentUserId} typing={typing} roomId={roomId} members={members} disableLightbox />
       </div>
       <div className="shrink-0">

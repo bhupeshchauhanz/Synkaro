@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import '@livekit/components-styles';
 import { getSocket } from '@/lib/socket';
-import { playSfx, stopSfx } from '@/lib/sfx';
+import { playSfx, stopSfx, preloadSfx } from '@/lib/sfx';
 import { useAuthStore } from '@/lib/auth-store';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -41,6 +41,7 @@ export function CallRoom({ roomId, token, serverUrl, enableVideo, enableAudio, o
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    preloadSfx(); // warm up ring/sfx so they play instantly (no 2-3s delay)
     const socket = getSocket();
     const join = () => socket.emit('call:join', { roomId });
     if (socket.connected) join();
@@ -245,14 +246,14 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
           <WatchStage roomId={roomId} currentUsername={user?.username ?? ''} />
         </section>
         <aside className="flex h-[50%] md:h-full md:w-[30%] min-w-0 flex-col border-t border-white/10 md:border-l md:border-t-0 bg-[#0a0a0a] overflow-hidden">
-          {/* Tiles — horizontal scroll for group, single for couple */}
-          <div className="shrink-0 border-b border-white/10 p-1.5 overflow-hidden" style={{ maxHeight: '35%' }}>
-            <div className={isGroup ? 'flex gap-1.5 overflow-x-auto pb-1' : 'flex flex-col gap-1.5'}>
-              <div className={isGroup ? 'w-20 md:w-24 shrink-0 aspect-video' : 'w-full aspect-video'}>
+          {/* Tiles — group: horizontal scroll strip; couple: self + partner side-by-side (both visible, compact) */}
+          <div className="shrink-0 border-b border-white/10 p-1.5">
+            <div className={isGroup ? 'flex gap-1.5 overflow-x-auto pb-1' : 'grid grid-cols-2 gap-1.5'}>
+              <div className={isGroup ? 'w-24 shrink-0 aspect-video' : 'aspect-video'}>
                 <SelfTile trackRef={localTrack} label={user?.username ?? 'You'} />
               </div>
               {remoteTracks.map((t) => (
-                <div key={`${t.participant.identity}-${t.source}`} className={isGroup ? 'w-20 md:w-24 shrink-0 aspect-video' : 'w-full aspect-video'}>
+                <div key={`${t.participant.identity}-${t.source}`} className={isGroup ? 'w-24 shrink-0 aspect-video' : 'aspect-video'}>
                   <Tile trackRef={t} label={t.participant.name || t.participant.identity} />
                 </div>
               ))}

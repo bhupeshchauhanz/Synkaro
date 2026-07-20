@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, Play, Volume2, Volume1, VolumeX, Maximize2, RotateCcw, RotateCw, RefreshCw, Loader2 } from 'lucide-react';
+import { Pause, Play, Volume2, Volume1, VolumeX, RotateCcw, RotateCw, RefreshCw, Loader2 } from 'lucide-react';
 import { formatTime } from '@/lib/utils';
 import type { WatchStateDto } from '@/lib/socket';
 
@@ -59,6 +59,25 @@ export function SyncVideoPlayer({
   const [hoverPct, setHoverPct] = useState<number | null>(null);
   const [slowNet, setSlowNet] = useState(false);
   const hideTimer = useRef<NodeJS.Timeout | null>(null);
+  const bufferTimer = useRef<NodeJS.Timeout | null>(null);
+  const bufferingReported = useRef(false);
+
+  // Debounced buffering report: only tell others we're stalling if it lasts
+  // >1.5s. This stops brief initial-load / seek stalls from triggering the
+  // cross-client "pause & wait" loop (the start-of-video play/pause flicker).
+  const reportBuffering = useCallback((b: boolean) => {
+    if (b) {
+      if (bufferTimer.current || bufferingReported.current) return;
+      bufferTimer.current = setTimeout(() => {
+        bufferTimer.current = null;
+        bufferingReported.current = true;
+        onBuffering?.(true);
+      }, 1500);
+    } else {
+      if (bufferTimer.current) { clearTimeout(bufferTimer.current); bufferTimer.current = null; }
+      if (bufferingReported.current) { bufferingReported.current = false; onBuffering?.(false); }
+    }
+  }, [onBuffering]);
 
   // Network hint
   useEffect(() => {
@@ -77,7 +96,10 @@ export function SyncVideoPlayer({
       if (isPlaying) setShowControls(false);
     }, 3000);
   };
-  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
+  useEffect(() => () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (bufferTimer.current) clearTimeout(bufferTimer.current);
+  }, []);
 
   // Apply an explicit remote state change (play / pause / seek) — hard-align.
   useEffect(() => {
@@ -198,13 +220,6 @@ export function SyncVideoPlayer({
     video.muted = v === 0;
   };
 
-  const toggleFullscreen = () => {
-    const el = containerRef.current;
-    if (!el) return;
-    if (!document.fullscreenElement) void el.requestFullscreen();
-    else void document.exitFullscreen();
-  };
-
   const playedPct = duration ? (time / duration) * 100 : 0;
 
   return (
@@ -247,7 +262,7 @@ export function SyncVideoPlayer({
         ref={videoRef}
         src={src}
         playsInline
-        preload="metadata"
+        preload="auto"
         className="w-full h-full max-h-full object-contain bg-black cursor-pointer"
         onClick={togglePlay}
         onPlay={() => { setIsPlaying(true); resetHideTimer(); }}
@@ -273,10 +288,10 @@ export function SyncVideoPlayer({
             setTime(resumeTime);
           }
         }}
-        onWaiting={() => { setLoading(true); onBuffering?.(true); }}
-        onPlaying={() => { setLoading(false); onBuffering?.(false); }}
-        onCanPlay={() => { setLoading(false); onBuffering?.(false); }}
-        onError={() => { setError(true); setLoading(false); onBuffering?.(false); }}
+        onWaiting={() => { setLoading(true); reportBuffering(true); }}
+        onPlaying={() => { setLoading(false); reportBuffering(false); }}
+        onCanPlay={() => { setLoading(false); reportBuffering(false); }}
+        onError={() => { setError(true); setLoading(false); reportBuffering(false); }}
         onVolumeChange={(e) => {
           setVolume(e.currentTarget.volume);
           setMuted(e.currentTarget.muted);
@@ -406,9 +421,6 @@ export function SyncVideoPlayer({
                 <RefreshCw className="h-3 w-3" /> Resync
               </button>
             )}
-            <button onClick={toggleFullscreen} className="rounded-full p-1.5 hover:bg-white/10 transition-colors" aria-label="Fullscreen">
-              <Maximize2 className="h-4 w-4" />
-            </button>
           </div>
         </div>
       </div>

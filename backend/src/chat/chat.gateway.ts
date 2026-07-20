@@ -537,6 +537,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     const state = await this.redis.getJson(`room:${body.roomId}:watch`);
     if (state) client.emit('watch:state', state);
+    // Also sync the currently-selected video so a joiner opens the same one
+    const selected = await this.redis.getJson<{ fileId: string }>(`room:${body.roomId}:watchfile`);
+    if (selected) client.emit('watch:selected', selected);
+  }
+
+  /** One user picks a video → everyone in the room opens the same one. */
+  @SubscribeMessage('watch:select')
+  async onWatchSelect(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { roomId: string; fileId: string | null },
+  ): Promise<void> {
+    const user = client.data.user;
+    if (!user) return;
+    const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
+    if (!ok) return;
+    if (body.fileId) {
+      await this.redis.setJson(`room:${body.roomId}:watchfile`, { fileId: body.fileId }, 86_400);
+    } else {
+      await this.redis.del(`room:${body.roomId}:watchfile`);
+    }
+    this.server.to(body.roomId).emit('watch:selected', { fileId: body.fileId, by: user.username });
   }
 
   private async broadcastWatch(

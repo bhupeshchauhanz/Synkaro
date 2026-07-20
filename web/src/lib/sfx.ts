@@ -2,8 +2,8 @@
 
 /**
  * Central sound-effect helper. Every sound shipped in /public/sounds is mapped
- * here so the whole app plays audio consistently (and we never reference a file
- * that doesn't exist).
+ * here. Sounds are PRELOADED and reused so they play instantly & cleanly (no
+ * 2-3s network delay on first play).
  */
 export type SfxName =
   | 'incoming' // someone is calling you
@@ -22,6 +22,27 @@ const FILES: Record<SfxName, string> = {
   airhorn: '/sounds/airhorn.mp3',
 };
 
+// One preloaded, fully-buffered element per sound (kept warm in memory).
+const cache = new Map<SfxName, HTMLAudioElement>();
+
+function base(name: SfxName): HTMLAudioElement | null {
+  if (typeof window === 'undefined') return null;
+  let el = cache.get(name);
+  if (!el) {
+    el = new Audio(FILES[name]);
+    el.preload = 'auto';
+    try { el.load(); } catch { /* noop */ }
+    cache.set(name, el);
+  }
+  return el;
+}
+
+/** Warm up all sounds ahead of time (call when a call/watch view mounts). */
+export function preloadSfx(): void {
+  if (typeof window === 'undefined') return;
+  (Object.keys(FILES) as SfxName[]).forEach(base);
+}
+
 interface PlayOpts {
   loop?: boolean;
   volume?: number;
@@ -31,12 +52,23 @@ interface PlayOpts {
 export function playSfx(name: SfxName, opts: PlayOpts = {}): HTMLAudioElement | null {
   if (typeof window === 'undefined') return null;
   try {
-    const audio = new Audio(FILES[name]);
-    audio.loop = opts.loop ?? false;
-    audio.volume = opts.volume ?? 1;
-    // Autoplay can be blocked before a user gesture — swallow the rejection.
-    void audio.play().catch(() => undefined);
-    return audio;
+    // Looping sounds (rings) reuse the single cached element.
+    if (opts.loop) {
+      const el = base(name);
+      if (!el) return null;
+      el.loop = true;
+      el.volume = opts.volume ?? 1;
+      try { el.currentTime = 0; } catch { /* noop */ }
+      void el.play().catch(() => undefined);
+      return el;
+    }
+    // One-shots clone the preloaded (already-buffered) element so overlapping
+    // plays work and start instantly.
+    const src = base(name);
+    const el = (src?.cloneNode(true) as HTMLAudioElement) ?? new Audio(FILES[name]);
+    el.volume = opts.volume ?? 1;
+    void el.play().catch(() => undefined);
+    return el;
   } catch {
     return null;
   }

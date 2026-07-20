@@ -60,6 +60,8 @@ export function WatchStage({
   const lastReported = useRef<number>(0);
   const bufferingUsers = useRef<Map<string, string>>(new Map());
   const iHoldLock = useRef(false);
+  const filesRef = useRef<UploadedFile[]>([]);
+  useEffect(() => { filesRef.current = files; }, [files]);
   const uploadAbort = useRef<AbortController | null>(null);
   const currentUploadId = useRef<string | null>(null);
 
@@ -140,15 +142,30 @@ export function WatchStage({
     const onLocked = (d: { byName: string }) => { if (!iHoldLock.current) setUploadLockedBy(d.byName); };
     const onUnlocked = () => setUploadLockedBy(null);
 
+    // Synced video selection — when anyone opens a video, everyone opens it
+    const onSelected = (d: { fileId: string | null }) => {
+      if (!d.fileId) { setActiveFile(null); return; }
+      const found = filesRef.current.find((f) => f.id === d.fileId);
+      if (found) { setActiveFile(found); return; }
+      // Just-uploaded by someone else — refetch the library then open it
+      api.get<UploadedFile[]>(`/upload/rooms/${roomId}/files`).then((res) => {
+        setFiles(res.data);
+        const f = res.data.find((x) => x.id === d.fileId);
+        if (f) setActiveFile(f);
+      }).catch(() => undefined);
+    };
+
     socket.on('watch:state', onState);
     socket.on('reaction:new', onReactionNew);
     socket.on('watch:buffering', onRemoteBuffering);
+    socket.on('watch:selected', onSelected);
     socket.on('upload:locked', onLocked);
     socket.on('upload:unlocked', onUnlocked);
     return () => {
       socket.off('watch:state', onState);
       socket.off('reaction:new', onReactionNew);
       socket.off('watch:buffering', onRemoteBuffering);
+      socket.off('watch:selected', onSelected);
       socket.off('upload:locked', onLocked);
       socket.off('upload:unlocked', onUnlocked);
     };
@@ -351,11 +368,15 @@ export function WatchStage({
               return (
                 <div key={f.id} className="card-hover text-left transition-all p-3 flex items-center justify-between">
                   <button
-                    onClick={() =>
-                      libraryOnly
-                        ? toast.message('Start a call and open Watch to play together')
-                        : setActiveFile(f)
-                    }
+                    onClick={() => {
+                      if (libraryOnly) {
+                        toast.message('Start a call and open Watch to play together');
+                        return;
+                      }
+                      setActiveFile(f);
+                      // Open the same video for everyone in the room
+                      getSocket().emit('watch:select', { roomId, fileId: f.id });
+                    }}
                     className="flex items-center gap-3 overflow-hidden flex-1 text-left"
                   >
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-bg-elevated border border-white/[0.08]">

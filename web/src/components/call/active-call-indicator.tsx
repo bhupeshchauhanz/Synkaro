@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Phone, X, Maximize2 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/lib/auth-store';
-import { playSfx, stopSfx } from '@/lib/sfx';
+import { playSfx, stopSfx, preloadSfx } from '@/lib/sfx';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActiveCallInfo {
@@ -33,6 +33,7 @@ export function ActiveCallIndicator() {
 
   useEffect(() => {
     if (status !== 'authenticated' || !user) return;
+    preloadSfx();
     const socket = getSocket();
 
     const onCallStarted = (data: { roomId: string; startedByName: string }) => {
