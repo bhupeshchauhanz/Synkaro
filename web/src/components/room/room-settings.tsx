@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as Dialog from '@radix-ui/react-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Upload, X, Check, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, X, Check, Trash2, AlertTriangle, LogOut } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { api, getApiError } from '@/lib/api';
 
@@ -87,7 +87,9 @@ export function RoomSettings({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -98,6 +100,7 @@ export function RoomSettings({
     setBackground(currentBackground ?? 'preset:midnight');
     setTab('general');
     setConfirmDelete(false);
+    setConfirmLeave(false);
     setIsMuted(localStorage.getItem(`synkaro:mute:${roomId}`) === 'true');
   }, [open, currentNickname, currentRoomNickname, currentBackground, roomId]);
 
@@ -177,6 +180,20 @@ export function RoomSettings({
     }
   };
 
+  const onLeaveRoom = async () => {
+    setLeaving(true);
+    try {
+      await api.post(`/rooms/${roomId}/leave`);
+      toast.success('Left the room');
+      onOpenChange(false);
+      router.push('/dashboard');
+    } catch (err) {
+      toast.error(getApiError(err).error);
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
@@ -235,7 +252,7 @@ export function RoomSettings({
                     ))}
                   </div>
 
-                  <div className="mt-6 max-h-[60vh] overflow-y-auto pr-1">
+                  <div className="mt-6 max-h-[65vh] overflow-y-auto pr-1 -mr-1">
                     {tab === 'general' ? (
                       <div className="space-y-5">
                         <div>
@@ -312,11 +329,16 @@ export function RoomSettings({
                             >
                               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Save changes'}
                             </button>
+                          </>
+                        ) : null}
 
-                            <div className="pt-5 mt-5 border-t border-white/[0.06]">
-                              <p className="text-xs font-semibold uppercase tracking-wider text-danger/80 mb-3">
-                                Danger zone
-                              </p>
+                        {/* Danger zone — host sees delete, members see leave */}
+                        <div className="pt-5 mt-5 border-t border-white/[0.06]">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-danger/80 mb-3">
+                            Danger zone
+                          </p>
+                          {isHost ? (
+                            <>
                               {!confirmDelete ? (
                                 <button
                                   onClick={() => setConfirmDelete(true)}
@@ -360,9 +382,52 @@ export function RoomSettings({
                                   </div>
                                 </div>
                               )}
-                            </div>
-                          </>
-                        ) : null}
+                            </>
+                          ) : (
+                            <>
+                              {!confirmLeave ? (
+                                <button
+                                  onClick={() => setConfirmLeave(true)}
+                                  className="flex items-center gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2.5 text-xs font-medium text-danger hover:bg-danger/10 transition-colors w-full"
+                                >
+                                  <LogOut className="h-3.5 w-3.5" /> Leave this room
+                                </button>
+                              ) : (
+                                <div className="rounded-md border border-danger/30 bg-danger/5 p-4">
+                                  <div className="flex gap-2.5">
+                                    <AlertTriangle className="h-4 w-4 flex-shrink-0 text-danger mt-0.5" />
+                                    <div className="text-xs text-text-primary">
+                                      <p className="font-semibold text-danger mb-1">Leave this room?</p>
+                                      <p className="text-text-secondary leading-relaxed">
+                                        You&apos;ll lose access until someone invites you back.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2 mt-4">
+                                    <button
+                                      onClick={() => setConfirmLeave(false)}
+                                      disabled={leaving}
+                                      className="btn-ghost text-xs flex-1"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={onLeaveRoom}
+                                      disabled={leaving}
+                                      className="btn-danger flex-1 text-xs"
+                                    >
+                                      {leaving ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        'Yes, leave'
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     ) : null}
 
