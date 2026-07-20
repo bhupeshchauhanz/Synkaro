@@ -18,10 +18,10 @@ A high-performance, real-time synchronized media sharing and communication platf
 ## Features
 
 - **Real-time voice & video calls** (LiveKit / WebRTC) — adaptive streaming + dynacast, poor-network auto camera-off with a notification to everyone, portrait-aware tiles with three display modes (Smart Fill / Fit / Smart Zoom) via a per-tile menu, pin-to-focus, camera-off avatar, and call sound effects (incoming/outgoing ring, join/leave, airhorn).
-- **Watch together** — upload a video and play it in sync for everyone: latency-compensated playback with smooth `playbackRate` drift correction, a **buffering pause-to-wait** so a slow viewer is never force-skipped, resume-where-you-left-off, playback attribution ("X paused"), and floating emoji reactions. A custom player with a buffered/hover-preview **seek bar** and a **volume slider**.
-- **In-call Watch mode** — from a call, one tap opens watch-together for **all** participants: the synced player + library fill the main area while call tiles, controls and chat sit in the sidebar (couple = vertical stack, friends = horizontal strip). A **single-uploader lock** prevents upload clashes.
-- **Couple & friend rooms** — couple layout puts your partner front-and-center (70/30 with self + chat); friend rooms use a responsive grid for up to 6 people.
-- **Chat** — encrypted at rest, typing indicators, read receipts, **WhatsApp-style persisted reactions** (with who-reacted), reliable delivery via server acks, and re-sync on reconnect.
+- **Watch together** — upload a video and play it in sync for everyone: latency-compensated playback with smooth `playbackRate` drift correction, a **buffering pause-to-wait** so a slow viewer is never force-skipped, **resume-where-you-left-off** (exact position saved as you watch and flushed on exit), playback attribution ("X paused"), floating emoji reactions, and three content display modes (Fit / Fill / Zoom). A custom player with a buffered/hover-preview **seek bar** and a **volume slider**.
+- **In-call Watch mode** — from a call, one tap opens watch-together for **all** participants: the synced player + library fill the main area while call tiles, controls and chat sit in the sidebar (couple = vertical stack, friends = horizontal strip). Opening a video selects it for everyone, and a **single-uploader lock** prevents upload clashes.
+- **Couple & friend rooms** — couple rooms (max **2**) put your partner front-and-center (70/30 with self + chat); friend rooms (max **4**) use a responsive grid.
+- **Chat** — encrypted at rest, typing indicators, read receipts, **WhatsApp-style persisted reactions** (with a who-reacted sheet, tap to add/remove your own), image lightbox, reliable delivery via server acks, and re-sync on reconnect.
 - **App-wide notifications** — new-message sound + browser notification + toast on any page, per-room unread indicators, and a **global incoming-call popup** (accept / decline). Couple / two-person calls hang up instantly on decline or drop.
 - **Profile gate** — a completed profile (bio, phone, date of birth) is required before creating or joining a room (avatar optional).
 - **Admin** — trend charts (signups / messages / rooms), room-type split, storage usage, a user-detail view, **CSV export**, and user/room management.
@@ -40,7 +40,7 @@ A high-performance, real-time synchronized media sharing and communication platf
 - **Presence** — the client sends a heartbeat every 45s (and on focus). This powers "online" state and reliable incoming-call delivery.
 - **Calls** — a user can always start a call and wait; the caller sees a "Waiting for <partner>" screen with an outgoing ring while other members get an incoming ring + popup (if their app is open) or can join later. Simultaneous mutual calls dedupe into a single room. Only one live call runs at a time — accepting a new call switches you over. In couple / two-person rooms the call ends the moment either side leaves, drops or declines.
 - **Poor network** — if the local connection stays poor for ~6s with the camera on, the camera is turned off (audio stays smooth) and everyone is told; when the network recovers, the user is prompted to turn it back on.
-- **Watch sync** — playback is latency-compensated and drift is corrected by nudging playback speed; if a viewer buffers, everyone waits for them. A manual "Resync" is also available.
+- **Watch sync** — playback is latency-compensated and drift is corrected by nudging playback speed; if a viewer buffers, everyone waits for them. A manual "Resync" is also available. Your position is saved continuously (and flushed exactly on exit) so you resume where you left off.
 
 ### In-call Watch mode
 

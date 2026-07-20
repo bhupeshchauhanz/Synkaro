@@ -53,12 +53,14 @@ function TechCard({ t }: { t: Tech }) {
 }
 
 const FEATURES: { icon: string; title: string; desc: string }[] = [
-  { icon: '🎬', title: 'Synced watch-together', desc: 'Latency-compensated playback with smooth playbackRate drift correction and a buffering "pause & wait" so no one is force-skipped.' },
+  { icon: '🎬', title: 'Synced watch-together', desc: 'Latency-compensated playback with smooth playbackRate drift correction, a buffering "pause & wait" so no one is force-skipped, and resume-where-you-left-off.' },
   { icon: '📹', title: 'HD voice & video calls', desc: 'LiveKit (WebRTC) with adaptive streaming, poor-network auto camera-off, portrait-aware tiles and pin-to-focus.' },
-  { icon: '💬', title: 'Real-time chat', desc: 'Encrypted messages, typing, read receipts, WhatsApp-style persisted reactions, and reliable delivery with server acks.' },
+  { icon: '💬', title: 'Real-time chat', desc: 'Encrypted messages, typing, read receipts, WhatsApp-style persisted reactions with a who-reacted sheet, and reliable delivery with server acks.' },
   { icon: '🔔', title: 'App-wide notifications', desc: 'Sound + browser notification + toast for new messages and incoming calls, with a global accept/decline popup.' },
   { icon: '🔒', title: 'Secure by default', desc: 'JWT + refresh cookies, Helmet CSP, room-membership authorization on every socket event, sanitized input.' },
   { icon: '🛠️', title: 'Admin analytics', desc: 'Signup/message/room trends, room-type split, storage usage, user detail and CSV export.' },
+  { icon: '👥', title: 'Couple & friend rooms', desc: 'Couple rooms (max 2) center your partner; friend rooms (max 4) use a responsive grid. A completed profile is required to create or join.' },
+  { icon: '⬆️', title: 'Resilient uploads', desc: 'Chunked uploads up to 3GB/video and 4GB/room, streamed to disk with a single-uploader lock and network-drop resume.' },
 ];
 
 export default function SystemDesignPage() {
@@ -168,7 +170,8 @@ export default function SystemDesignPage() {
               <p className="mt-2 text-xs text-text-secondary leading-relaxed">
                 Play/pause/seek broadcast through the WS gateway and are stored in Redis. Clients compensate for network
                 latency, and correct small drift by nudging <code className="text-white">playbackRate</code> rather than
-                skipping. If a viewer buffers, everyone soft-pauses until they catch up.
+                skipping. If a viewer buffers, everyone soft-pauses until they catch up. Watch position is saved as you
+                go and flushed exactly on exit, so you resume where you left off.
               </p>
             </div>
             <div className="card">
