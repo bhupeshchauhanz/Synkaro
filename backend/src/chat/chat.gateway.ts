@@ -16,6 +16,15 @@ import { RoomsService } from '../rooms/rooms.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CallService } from '../call/call.service';
 
+// UUID v4 pattern for roomId validation — prevents junk/oversized IDs hitting the DB
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// CUID pattern (Prisma default IDs)
+const CUID_PATTERN = /^c[a-z0-9]{20,30}$/;
+function isValidId(id: unknown): boolean {
+  if (typeof id !== 'string' || id.length < 10 || id.length > 50) return false;
+  return UUID_PATTERN.test(id) || CUID_PATTERN.test(id);
+}
+
 interface JoinPayload {
   roomId: string;
 }
@@ -184,6 +193,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    if (!isValidId(body.roomId)) return;
     const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
     if (!ok) {
       client.emit('error', { code: 'NOT_ROOM_MEMBER', message: 'Not a member' });
@@ -217,6 +227,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<{ ok: boolean; message?: unknown; error?: string }> {
     const user = client.data.user;
     if (!user) return { ok: false, error: 'Not authenticated' };
+    if (!isValidId(body.roomId)) return { ok: false, error: 'Invalid room' };
     const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
     if (!ok) {
       client.emit('error', { code: 'NOT_ROOM_MEMBER', message: 'Not a member' });
@@ -268,6 +279,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    if (!isValidId(body.roomId) || !isValidId(body.messageId)) return;
+
+    // Verify membership before allowing read receipt
+    const isMember = await this.wsAuth.assertRoomMember(user.id, body.roomId);
+    if (!isMember) return;
     
     const message = await this.prisma.message.findUnique({ where: { id: body.messageId } });
     if (!message || message.roomId !== body.roomId) return;

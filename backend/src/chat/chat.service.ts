@@ -68,6 +68,13 @@ export class ChatService {
           code: 'IMAGE_TOO_LARGE',
         });
       }
+      // Validate fileUrl: only allow data: URIs or our own /uploads/ paths
+      if (!input.fileUrl.startsWith('data:image/') && !input.fileUrl.startsWith('/uploads/')) {
+        throw new BadRequestException({
+          message: 'Invalid file URL',
+          code: 'INVALID_FILE_URL',
+        });
+      }
     }
 
     // Check room chat size limit (25MB). Best-effort housekeeping — runs on ~2% of

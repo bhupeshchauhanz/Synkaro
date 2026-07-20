@@ -35,11 +35,11 @@ export function baseTemplate(content: string, opts: BaseOpts = {}): string {
             <td class="inner" style="padding:36px 44px 0 44px;">
               <table role="presentation" cellpadding="0" cellspacing="0" align="left">
                 <tr>
-                  <!-- Icon: white rounded box with a play triangle (email-safe, no SVG) -->
+                  <!-- Icon: white rounded box with a black play triangle (email-safe, no SVG) -->
                   <td style="vertical-align:middle;padding-right:12px;">
                     <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-                      <td width="40" height="40" style="width:40px;height:40px;background:#ffffff;border-radius:11px;text-align:center;vertical-align:middle;line-height:40px;">
-                        <div style="width:0;height:0;border-style:solid;border-width:8px 0 8px 13px;border-color:transparent transparent transparent #000000;display:inline-block;vertical-align:middle;"></div>
+                      <td width="40" height="40" style="width:40px;height:40px;background:#ffffff;border-radius:11px;text-align:center;vertical-align:middle;line-height:40px;border:2px solid #ffffff;">
+                        <div style="width:0;height:0;border-style:solid;border-width:8px 0 8px 14px;border-color:transparent transparent transparent #000000;display:inline-block;vertical-align:middle;margin-left:2px;"></div>
                       </td>
                     </tr></table>
                   </td>
