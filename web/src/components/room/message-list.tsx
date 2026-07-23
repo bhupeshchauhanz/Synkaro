@@ -293,7 +293,13 @@ export function MessageList({
         {typing.length > 0 ? (
           <div className="mt-3 flex justify-start">
             <div className="flex items-center rounded-2xl rounded-tl-sm border border-white/[0.06] bg-white/[0.08] px-4 py-2.5 backdrop-blur-md">
-              <span className="text-[11px] font-medium text-text-tertiary mr-2">{typing[0]?.username}</span>
+              <span className="text-[11px] font-medium text-text-tertiary mr-2">
+                {typing.length === 1
+                  ? typing[0]?.username
+                  : typing.length === 2
+                    ? `${typing[0]?.username} and ${typing[1]?.username} are typing...`
+                    : 'Multiple people are typing...'}
+              </span>
               <span className="flex gap-0.5">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:-0.3s]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:-0.15s]" />
@@ -323,6 +329,7 @@ export function MessageList({
                     <button
                       key={emoji}
                       onClick={() => sendReaction(emoji)}
+                      aria-label={`React with ${emoji}`}
                       className="flex h-9 w-9 items-center justify-center rounded-full text-xl transition-all hover:bg-white/[0.1] hover:scale-125 active:scale-90"
                     >
                       {emoji}
@@ -416,6 +423,7 @@ export function MessageList({
                       <button
                         key={emoji}
                         onClick={() => toggleReaction(reactionSheet, emoji)}
+                        aria-label={`React with ${emoji}`}
                         className={`flex h-10 w-10 items-center justify-center rounded-full text-xl transition-all hover:scale-110 active:scale-90 ${
                           mine ? 'bg-blue-500/20 ring-1 ring-blue-400/50' : 'hover:bg-white/[0.08]'
                         }`}

@@ -203,6 +203,8 @@ export function RoomShell({ roomId }: { roomId: string }) {
     };
   }, [roomId, status, user?.id ?? null]);
 
+  const refetchRoom = useCallback(() => { void fetchRoom(); }, [roomId]);
+
   const sendMessage = useCallback((content: string) => {
     sendChatMessage({ roomId, content, type: 'text' }, (e) => toast.error(e));
   }, [roomId]);
@@ -281,7 +283,7 @@ export function RoomShell({ roomId }: { roomId: string }) {
         currentNickname={myMember?.nickname ?? null}
         currentRoomNickname={room.nickname}
         currentBackground={room.background}
-        onUpdated={() => void fetchRoom()}
+        onUpdated={refetchRoom}
       />
 
 

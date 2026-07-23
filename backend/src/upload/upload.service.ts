@@ -53,7 +53,7 @@ export class UploadService {
       throw new BadRequestException({ message: 'Invalid upload ID', code: 'INVALID_UPLOAD_ID' });
     }
     // Validate chunkIndex to prevent path traversal (e.g. negative or absurdly large values)
-    if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 100_000) {
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 10_000) {
       throw new BadRequestException({ message: 'Invalid chunk index', code: 'INVALID_CHUNK_INDEX' });
     }
     const dir = path.join(this.tmpDir, uploadId);

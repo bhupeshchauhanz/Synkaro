@@ -95,6 +95,9 @@ type AuthedSocket = Socket & {
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(ChatGateway.name);
+  private readonly rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+  private static readonly RATE_LIMIT_MAX = 30;
+  private static readonly RATE_LIMIT_WINDOW_MS = 10_000;
 
   @WebSocketServer()
   server!: Server;
@@ -136,6 +139,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleDisconnect(client: AuthedSocket): Promise<void> {
+    this.rateLimitMap.delete(client.id);
     const user = client.data.user;
     if (!user) return;
     const rooms = Array.from(client.rooms).filter((r) => r !== client.id);
@@ -157,6 +161,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (client.data.uploadLockRoom) {
       await this.releaseUploadLock(client.data.uploadLockRoom, user.id);
     }
+  }
+
+  /** Sliding-window rate limit: max RATE_LIMIT_MAX messages per RATE_LIMIT_WINDOW_MS per client. */
+  private isRateLimited(clientId: string): boolean {
+    const now = Date.now();
+    const entry = this.rateLimitMap.get(clientId);
+    if (!entry || now - entry.windowStart > ChatGateway.RATE_LIMIT_WINDOW_MS) {
+      this.rateLimitMap.set(clientId, { count: 1, windowStart: now });
+      return false;
+    }
+    entry.count += 1;
+    if (entry.count > ChatGateway.RATE_LIMIT_MAX) return true;
+    return false;
   }
 
   /**
@@ -237,6 +254,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<{ ok: boolean; message?: unknown; error?: string }> {
     const user = client.data.user;
     if (!user) return { ok: false, error: 'Not authenticated' };
+    if (this.isRateLimited(client.id)) {
+      client.emit('rate_limit', { code: 'RATE_LIMITED', message: 'Too many messages' });
+      return { ok: false, error: 'Rate limited' };
+    }
     if (!isValidId(body.roomId)) return { ok: false, error: 'Invalid room' };
     const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
     if (!ok) {
@@ -328,6 +349,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    if (this.isRateLimited(client.id)) {
+      client.emit('rate_limit', { code: 'RATE_LIMITED', message: 'Too many events' });
+      return;
+    }
     // Validate emoji — max 10 chars (covers multi-codepoint emoji), no scripts
     if (!body.emoji || body.emoji.length > 10) return;
     // Verify membership before broadcasting
@@ -400,6 +425,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    if (this.isRateLimited(client.id)) {
+      client.emit('rate_limit', { code: 'RATE_LIMITED', message: 'Too many events' });
+      return;
+    }
     const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
     if (!ok) return;
     client

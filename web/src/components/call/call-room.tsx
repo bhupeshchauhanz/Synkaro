@@ -166,7 +166,7 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
       try {
         if (initialAudio) await room.localParticipant.setMicrophoneEnabled(true);
         if (initialVideo) await room.localParticipant.setCameraEnabled(true, { resolution: VideoPresets.h720 });
-      } catch {}
+      } catch (e) { console.error('Failed to publish local tracks:', e); }
     })();
   }, [connectionState, room, initialAudio, initialVideo]);
 
@@ -182,7 +182,7 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
             description: 'Weak network — their camera was turned off to keep the call smooth.',
           });
         }
-      } catch {}
+      } catch (e) { console.error('Failed to parse data payload:', e); }
     };
     room.on(RoomEvent.MediaDevicesError, onMediaErr);
     room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
@@ -212,7 +212,7 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
             try {
               const payload = new TextEncoder().encode(JSON.stringify({ type: 'video-off-neterr', name: lp.name || 'A participant' }));
               void lp.publishData(payload, { reliable: true });
-            } catch {}
+            } catch (e) { console.error('Failed to publish data payload:', e); }
           }
         }, 6000);
       } else {
@@ -382,7 +382,7 @@ function RemoteGrid({ tracks }: { tracks: TrackReferenceOrPlaceholder[] }) {
         {n > 1 ? (
           <button
             onClick={() => setPinned(isPinned ? null : id)}
-            title={isPinned ? 'Unpin' : 'Pin'}
+            aria-label={isPinned ? 'Unpin' : 'Pin'}
             className="absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-black/60 text-white/80 opacity-0 transition-opacity hover:bg-black/80 hover:text-white group-hover/pin:opacity-100"
           >
             {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
@@ -473,7 +473,7 @@ function CallControls({ onLeave, onToggleWatch, watchActive, inline }: {
     try {
       const payload = new TextEncoder().encode(JSON.stringify({ type: 'airhorn' }));
       await localParticipant.publishData(payload, { reliable: true });
-    } catch {}
+    } catch (e) { console.error('Failed to publish airhorn data:', e); }
   };
 
   const wrapperClass = inline
@@ -482,23 +482,23 @@ function CallControls({ onLeave, onToggleWatch, watchActive, inline }: {
 
   return (
     <div className={wrapperClass}>
-      <CB active={micEnabled} disabled={!isConnected} onClick={() => { if (!isConnected) return; if (!micEnabled) playSfx('unmute'); void localParticipant.setMicrophoneEnabled(!micEnabled); }}>
+      <CB active={micEnabled} disabled={!isConnected} ariaLabel={micEnabled ? 'Mute microphone' : 'Unmute microphone'} onClick={() => { if (!isConnected) return; if (!micEnabled) playSfx('unmute'); void localParticipant.setMicrophoneEnabled(!micEnabled); }}>
         {micEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
       </CB>
-      <CB active={camEnabled} disabled={!isConnected} onClick={() => { if (!isConnected) return; if (!camEnabled) playSfx('unmute'); void localParticipant.setCameraEnabled(!camEnabled, { resolution: VideoPresets.h720 }); }}>
+      <CB active={camEnabled} disabled={!isConnected} ariaLabel={camEnabled ? 'Turn off camera' : 'Turn on camera'} onClick={() => { if (!isConnected) return; if (!camEnabled) playSfx('unmute'); void localParticipant.setCameraEnabled(!camEnabled, { resolution: VideoPresets.h720 }); }}>
         {camEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
       </CB>
       <div className="mx-0.5 h-5 w-px bg-white/10" />
-      <button onClick={onToggleWatch} title={watchActive ? 'Back to call' : 'Watch together'}
+      <button onClick={onToggleWatch} aria-label={watchActive ? 'Back to call' : 'Watch together'}
         className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${watchActive ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/10 hover:text-white'}`}>
         <Tv className="h-3.5 w-3.5" />
       </button>
-      <button onClick={playAirhorn} disabled={airhornCooldown} title="Airhorn"
+      <button onClick={playAirhorn} disabled={airhornCooldown} aria-label="Airhorn"
         className="flex h-9 w-9 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-30">
         <Volume2 className="h-3.5 w-3.5" />
       </button>
       <div className="mx-0.5 h-5 w-px bg-white/10" />
-      <button onClick={onLeave} title="Leave call"
+      <button onClick={onLeave} aria-label="Leave call"
         className="flex h-9 w-9 items-center justify-center rounded-full bg-[#b30000] text-white hover:bg-[#900] transition-colors">
         <PhoneOff className="h-3.5 w-3.5" />
       </button>
@@ -506,9 +506,9 @@ function CallControls({ onLeave, onToggleWatch, watchActive, inline }: {
   );
 }
 
-function CB({ active, disabled, onClick, children }: { active: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+function CB({ active, disabled, onClick, ariaLabel, children }: { active: boolean; disabled?: boolean; onClick: () => void; ariaLabel: string; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} disabled={disabled}
+    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel}
       className={`flex h-9 w-9 items-center justify-center rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
         active ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
       }`}>

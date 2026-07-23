@@ -20,11 +20,11 @@ export const toast = {
   success: (message: string | React.ReactNode, data?: ExternalToast) => 
     sonnerToast.success(message, withCopyAction(message, data)),
   error: (message: string | React.ReactNode, data?: ExternalToast) => 
-    sonnerToast.error(message, withCopyAction(message, data)),
+    sonnerToast.error(message, data),
   info: (message: string | React.ReactNode, data?: ExternalToast) => 
     sonnerToast.info(message, withCopyAction(message, data)),
   warning: (message: string | React.ReactNode, data?: ExternalToast) => 
-    sonnerToast.warning(message, withCopyAction(message, data)),
+    sonnerToast.warning(message, data),
   message: (message: string | React.ReactNode, data?: ExternalToast) => 
     sonnerToast(message, withCopyAction(message, data)),
   custom: sonnerToast.custom,

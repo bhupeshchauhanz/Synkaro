@@ -81,7 +81,8 @@ export function ChatInput({
           (e) => toast.error(e),
         );
         removeImage();
-      } catch {
+      } catch (e) {
+        console.error('Failed to send image:', e);
         toast.error('Failed to send image');
       } finally {
         setUploading(false);
@@ -114,11 +115,13 @@ export function ChatInput({
         {showEmoji ? (
           <div
             ref={pickerRef}
+            role="grid"
             className="absolute bottom-full left-0 right-0 mb-2 grid grid-cols-8 gap-0.5 rounded-xl border border-border bg-bg-elevated/95 backdrop-blur-xl p-2 shadow-2xl max-w-[calc(100vw-24px)]"
           >
             {QUICK_EMOJI.map((e) => (
               <button
                 key={e}
+                role="gridcell"
                 onClick={() => {
                   setText((t) => t + e);
                   setShowEmoji(false);

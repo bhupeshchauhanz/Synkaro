@@ -124,8 +124,7 @@ html, body {
       hover:border-border-strong hover:shadow-card-hover;
   }
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-pill border border-border bg-white/[0.03]
-      px-3 py-1 text-xs font-medium text-text-secondary;
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium;
   }
   .section { @apply px-6 py-20 md:py-24; }
 }

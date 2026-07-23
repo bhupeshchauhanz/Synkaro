@@ -50,7 +50,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#08080a',
+  themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
 };
@@ -71,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <body className="bg-bg-base text-text-primary antialiased">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:p-4 focus:bg-white focus:text-black">Skip to content</a>
         <Script
           id="ld-json"
           type="application/ld+json"
@@ -87,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SplashLoader />
         <NavProgress />
         <AuthProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider><div id="main-content">{children}</div></ToastProvider>
           <ActiveCallIndicator />
           <GlobalNotifications />
         </AuthProvider>

@@ -17,6 +17,7 @@ const CLEANUP_INTERVAL_MS = 30 * 60 * 1000; // every 30 min
 export class UploadCleanupService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(UploadCleanupService.name);
   private readonly uploadDir: string;
+  private initialTimer: NodeJS.Timeout | null = null;
   private timer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -28,11 +29,12 @@ export class UploadCleanupService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     // First run after 1 min to let the app stabilize
-    setTimeout(() => void this.runCleanup(), 60_000);
+    this.initialTimer = setTimeout(() => void this.runCleanup(), 60_000);
     this.timer = setInterval(() => void this.runCleanup(), CLEANUP_INTERVAL_MS);
   }
 
   onModuleDestroy(): void {
+    if (this.initialTimer) clearTimeout(this.initialTimer);
     if (this.timer) clearInterval(this.timer);
   }
 
