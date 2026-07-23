@@ -99,11 +99,15 @@ export function SyncVideoPlayer({
     return () => conn.removeEventListener?.('change', update);
   }, []);
 
+  const isPlayingRef = useRef(false);
+  // Keep ref in sync with state for use in callbacks/setTimeout
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
   const resetHideTimer = () => {
     setShowControls(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
+      if (isPlayingRef.current) setShowControls(false);
     }, 3000);
   };
   useEffect(() => () => {

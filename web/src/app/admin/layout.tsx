@@ -25,6 +25,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (status === 'loading' || status === 'idle') return null;
   if (status === 'guest' || !user) return null;
+  if (!user.isAdmin) {
+    router.replace('/dashboard');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-bg-base">
@@ -46,7 +50,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={cn(
                   'rounded-pill px-4 py-2 text-sm font-medium transition-all',
-                  pathname === item.href
+                  (item.href === '/admin' ? pathname === '/admin' : pathname?.startsWith(item.href))
                     ? 'bg-white/[0.08] text-text-primary'
                     : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]',
                 )}

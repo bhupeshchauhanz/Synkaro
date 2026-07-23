@@ -93,25 +93,28 @@ export function MessageList({
   const [reactionSheet, setReactionSheet] = useState<string | null>(null); // messageId whose reactions are shown
 
   useEffect(() => {
-    // Keep the view pinned to the latest message. Notification sounds are
-    // handled centrally by <GlobalNotifications/> (which stays silent for the
-    // chat you're actively looking at), so we don't play any audio here.
+    // Auto-scroll to bottom only if user is already near the bottom (within 200px).
+    // This prevents forcing the user back down when they're reading old messages.
     const el = containerRef.current;
     if (el) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
+      if (isNearBottom) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      }
     }
   }, [messages, typing.length]);
 
   useEffect(() => {
-    // Auto-mark messages as read when they appear in the list
-    messages.forEach((m) => {
-      if (m.senderId !== currentUserId) {
-        const meta = m.metadata as { readBy?: string[] } | null;
-        if (!meta?.readBy?.includes(currentUserId)) {
-          getSocket().emit('message:read', { roomId, messageId: m.id });
-        }
-      }
+    // Auto-mark only the LATEST unread message as read (not all messages).
+    // This prevents flooding socket with hundreds of read events on load.
+    const lastUnread = [...messages].reverse().find((m) => {
+      if (m.senderId === currentUserId) return false;
+      const meta = m.metadata as { readBy?: string[] } | null;
+      return !meta?.readBy?.includes(currentUserId);
     });
+    if (lastUnread) {
+      getSocket().emit('message:read', { roomId, messageId: lastUnread.id });
+    }
   }, [messages, currentUserId, roomId]);
 
   useEffect(() => {

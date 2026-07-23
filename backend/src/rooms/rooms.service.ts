@@ -180,6 +180,12 @@ export class RoomsService {
     if (!room) {
       throw new NotFoundException({ message: 'Room not found', code: 'ROOM_NOT_FOUND' });
     }
+    const member = await this.prisma.roomMember.findUnique({
+      where: { roomId_userId: { roomId, userId } },
+    });
+    if (!member) {
+      throw new NotFoundException({ message: 'Not a member of this room', code: 'NOT_ROOM_MEMBER' });
+    }
     if (room.ownerId === userId) {
       await this.prisma.room.delete({ where: { id: roomId } });
       return;
@@ -268,6 +274,12 @@ export class RoomsService {
     if (actingUserId === targetUserId) {
       throw new BadRequestException({ message: 'Cannot kick yourself', code: 'CANNOT_KICK_SELF' });
     }
+    const target = await this.prisma.roomMember.findUnique({
+      where: { roomId_userId: { roomId, userId: targetUserId } },
+    });
+    if (!target) {
+      throw new NotFoundException({ message: 'User is not a member of this room', code: 'NOT_ROOM_MEMBER' });
+    }
     await this.prisma.roomMember.delete({
       where: { roomId_userId: { roomId, userId: targetUserId } },
     });
@@ -285,6 +297,10 @@ export class RoomsService {
   }
 
   async setTheme(roomId: string, theme: string): Promise<void> {
+    const ALLOWED_THEMES = ['midnight', 'soft-pink', 'lavender', 'sky-blue', 'peach', 'ocean', 'forest', 'aurora', 'sunset', 'candy'];
+    if (!ALLOWED_THEMES.includes(theme)) return;
+    const room = await this.prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) return;
     await this.prisma.room.update({ where: { id: roomId }, data: { currentTheme: theme } });
   }
 
@@ -294,6 +310,11 @@ export class RoomsService {
     background: string,
   ): Promise<{ background: string }> {
     await this.assertHost(roomId, userId);
+    const isPreset = background.startsWith('preset:');
+    const isUpload = /^\/uploads\/[a-zA-Z0-9_/-]+\.(jpg|jpeg|png)$/i.test(background);
+    if (!isPreset && !isUpload) {
+      throw new BadRequestException({ message: 'Invalid background value', code: 'INVALID_BACKGROUND' });
+    }
     const room = await this.prisma.room.update({
       where: { id: roomId },
       data: { background },

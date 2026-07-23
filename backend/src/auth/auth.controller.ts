@@ -75,6 +75,7 @@ export class AuthController {
   }
 
   @Post('google')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in with Google ID token (mobile + web SDK)' })
   async google(
@@ -128,12 +129,14 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async reset(@Body() dto: ResetPasswordDto): Promise<{ reset: boolean }> {
     return this.auth.resetPassword(dto.token, dto.newPassword);
   }
 
   @Post('refresh')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async refresh(
     @Req() req: Request,
@@ -149,6 +152,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async logout(
     @Req() req: Request,

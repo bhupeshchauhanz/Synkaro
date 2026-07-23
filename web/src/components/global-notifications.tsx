@@ -84,7 +84,10 @@ export function GlobalNotifications() {
           });
           n.onclick = () => {
             window.focus();
-            window.location.href = `/room/${m.roomId}`;
+            // Validate roomId to prevent XSS / open redirect
+            if (/^[a-zA-Z0-9_-]+$/.test(m.roomId)) {
+              window.location.href = `/room/${m.roomId}`;
+            }
           };
         } catch {
           /* noop */

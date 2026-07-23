@@ -25,6 +25,7 @@ export function ActiveCallIndicator() {
   const [dismissed, setDismissed] = useState(false);
   // Incoming calls auto-redirect to fullscreen (no popup state needed)
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (status !== 'authenticated' || !user) return;
@@ -57,7 +58,10 @@ export function ActiveCallIndicator() {
       // Play incoming ring for 3 seconds, then auto-redirect to call fullscreen
       stopSfx(audioRef.current);
       audioRef.current = playSfx('incoming', { loop: true });
-      setTimeout(() => {
+      // Clear any previous redirect timer
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = setTimeout(() => {
+        redirectTimerRef.current = null;
         stopSfx(audioRef.current);
         audioRef.current = null;
         window.location.href = `/room/${data.roomId}/call`;
@@ -84,8 +88,11 @@ export function ActiveCallIndicator() {
     }
   }, []);
 
-  // Stop the ring if this component unmounts
-  useEffect(() => () => stopSfx(audioRef.current), []);
+  // Cleanup timer + audio on unmount
+  useEffect(() => () => {
+    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    stopSfx(audioRef.current);
+  }, []);
 
   return (
     <>

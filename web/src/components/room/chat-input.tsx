@@ -65,19 +65,21 @@ export function ChatInput({
       setUploading(true);
       try {
         // Convert to base64 and send as image message (with optional caption)
-        const reader = new FileReader();
-        reader.onload = () => {
-          sendChatMessage(
-            {
-              roomId,
-              content: trimmed || undefined,
-              type: 'image',
-              fileUrl: reader.result as string,
-            },
-            (e) => toast.error(e),
-          );
-        };
-        reader.readAsDataURL(imageFile);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(imageFile);
+        });
+        sendChatMessage(
+          {
+            roomId,
+            content: trimmed || undefined,
+            type: 'image',
+            fileUrl: dataUrl,
+          },
+          (e) => toast.error(e),
+        );
         removeImage();
       } catch {
         toast.error('Failed to send image');
