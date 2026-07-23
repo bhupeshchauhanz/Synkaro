@@ -67,7 +67,11 @@ type AuthedSocket = Socket & {
 @WebSocketGateway({
   cors: {
     origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
-      if (!origin) return cb(null, true);
+      if (!origin) {
+        // Block null/undefined origin in production; allow in dev for file:// etc.
+        if (process.env.NODE_ENV === 'production') return cb(new Error('No origin'));
+        return cb(null, true);
+      }
       const allowed =
         [
           process.env.WEB_URL ?? 'http://localhost:3000',
@@ -213,6 +217,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    if (!isValidId(body.roomId)) return;
     await client.leave(body.roomId);
     this.server.to(body.roomId).emit('user:left', {
       userId: user.id,
@@ -264,6 +269,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
+    if (!isValidId(body.roomId) || !isValidId(body.messageId)) return;
+    const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
+    if (!ok) return;
     try {
       const result = await this.chat.deleteMessage(user.id, body.messageId);
       this.server.to(body.roomId).emit('message:deleted', result);

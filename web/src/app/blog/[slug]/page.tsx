@@ -36,9 +36,12 @@ function renderMarkdown(md: string): string {
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
 
-  // Bold + links
+  // Bold + links (sanitize hrefs to prevent javascript: XSS)
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
+  html = html.replace(/\[(.+?)\]\((.+?)\)/g, (_, text, href) => {
+    const safe = /^https?:\/\//i.test(href) ? href : '#';
+    return `<a href="${safe}" rel="noopener noreferrer">${text}</a>`;
+  });
 
   // Lists
   html = html.replace(/(^|\n)((?:- .+\n?)+)/g, (_, p1, block) => {

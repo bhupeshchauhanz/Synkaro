@@ -22,14 +22,19 @@ export class AdminGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
-      throw new ForbiddenException('Not authenticated');
+      throw new ForbiddenException({ message: 'Not authenticated', code: 'NOT_AUTHENTICATED' });
     }
 
-    // Check if user is first user (room owner) = admin
-    const roomCount = await this.prisma.room.count({ where: { ownerId: user.id } });
-    if (roomCount > 0) return true;
+    // Check the user's isAdmin flag in the database
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isAdmin: true },
+    });
 
-    // Or check if user owns any room = admin
+    if (!dbUser?.isAdmin) {
+      throw new ForbiddenException({ message: 'Admin access required', code: 'NOT_ADMIN' });
+    }
+
     return true;
   }
 }

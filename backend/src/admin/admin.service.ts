@@ -32,9 +32,9 @@ export class AdminService {
       this.prisma.uploadedFile.count(),
     ]);
 
-    // Storage usage
-    const files = await this.prisma.uploadedFile.findMany({ select: { fileSize: true } });
-    const storageUsed = files.reduce((sum, f) => sum + Number(f.fileSize), 0);
+    // Storage usage — use SQL aggregate instead of loading all records
+    const storageResult = await this.prisma.uploadedFile.aggregate({ _sum: { fileSize: true } });
+    const storageUsed = Number(storageResult._sum.fileSize ?? 0);
 
     // Trends over the last 7 days
     const [signupsPerDay, messagesPerDay, roomsPerDay] = await Promise.all([

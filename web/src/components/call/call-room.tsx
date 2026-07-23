@@ -171,7 +171,7 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
   }, [connectionState, room, initialAudio, initialVideo]);
 
   useEffect(() => {
-    const onMediaErr = (err: Error) => console.warn('[Call] Media error:', err.message);
+    const onMediaErr = () => {}; // Media errors are handled gracefully via UI state
     const onParticipantDisconnected = () => playSfx('left');
     const onDataReceived = (payload: Uint8Array) => {
       try {

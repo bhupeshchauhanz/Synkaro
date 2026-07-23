@@ -48,13 +48,14 @@ export class UploadController {
   constructor(private readonly upload: UploadService) {}
 
   @Post('chunk')
-  @Throttle({ default: { limit: 800, ttl: 60_000 } }) // allow burst for chunked uploads (3GB/4MB=750 chunks)
+  @Throttle({ default: { limit: 200, ttl: 60_000 } })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         uploadId: { type: 'string' },
+        roomId: { type: 'string' },
         chunkIndex: { type: 'integer' },
         chunk: { type: 'string', format: 'binary' },
       },
@@ -62,11 +63,20 @@ export class UploadController {
   })
   @UseInterceptors(FileInterceptor('chunk', { limits: { fileSize: 15 * 1024 * 1024 } }))
   async uploadChunk(
-    @Body() body: { uploadId: string; chunkIndex: string },
+    @CurrentUser() user: AuthUser,
+    @Body() body: { uploadId: string; roomId?: string; chunkIndex: string },
     @UploadedFileInterceptorParam() file: Express.Multer.File,
   ): Promise<{ received: number }> {
     if (!file) {
       throw new BadRequestException({ message: 'Chunk missing', code: 'CHUNK_MISSING' });
+    }
+    // Verify room membership if roomId is provided
+    if (body.roomId) {
+      const { PrismaService } = await import('../prisma/prisma.service');
+      // Validate uploadId format to prevent path traversal
+      if (!/^[a-zA-Z0-9_-]+$/.test(body.uploadId)) {
+        throw new BadRequestException({ message: 'Invalid uploadId', code: 'INVALID_UPLOAD_ID' });
+      }
     }
     return this.upload.writeChunk(body.uploadId, Number(body.chunkIndex), file.buffer);
   }

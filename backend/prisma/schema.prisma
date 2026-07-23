@@ -34,6 +34,8 @@ model User {
   watchHistory   WatchHistory[]
   refreshTokens  RefreshToken[]
   uploadedFiles  UploadedFile[] @relation("Uploader")
+
+  @@index([lastSeenAt])
 }
 
 model RefreshToken {
@@ -127,6 +129,8 @@ model Message {
   sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([roomId, createdAt])
+  @@index([senderId])
+  @@index([deletedAt])
 }
 
 model UploadedFile {
