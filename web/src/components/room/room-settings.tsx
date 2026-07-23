@@ -292,6 +292,9 @@ export function RoomSettings({
                             <p className="text-[11px] text-text-tertiary mt-0.5">Don't show popups for new messages</p>
                           </div>
                           <button
+                            role="switch"
+                            aria-checked={isMuted}
+                            aria-label="Mute notifications"
                             onClick={() => {
                               const next = !isMuted;
                               setIsMuted(next);

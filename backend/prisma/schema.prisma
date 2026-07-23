@@ -150,6 +150,8 @@ model UploadedFile {
   uploadedBy User @relation("Uploader", fields: [uploadedById], references: [id])
 
   @@index([roomId])
+  @@index([uploadedById])
+  @@index([expiresAt])
 }
 
 model WatchHistory {
@@ -167,6 +169,7 @@ model WatchHistory {
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roomId])
+  @@index([roomId])
 }
 
 model WatchlistItem {

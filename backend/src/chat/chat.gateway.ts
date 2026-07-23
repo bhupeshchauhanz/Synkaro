@@ -75,8 +75,9 @@ type AuthedSocket = Socket & {
       const allowed =
         [
           process.env.WEB_URL ?? 'http://localhost:3000',
-          'http://localhost:3000',
-          'http://localhost:8081',
+          ...(process.env.NODE_ENV !== 'production'
+            ? ['http://localhost:3000', 'http://localhost:8081']
+            : []),
         ].includes(origin) ||
         // Allow any LAN IP in dev so phones on the same WiFi can connect
         (process.env.NODE_ENV !== 'production' &&
@@ -144,7 +145,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Auto-leave any active call rooms
     const callRooms = (client.data.callRooms ?? []) as string[];
     for (const roomId of callRooms) {
-      await this.handleCallLeave(roomId, user);
+      try {
+        await this.handleCallLeave(roomId, user);
+      } catch (err) {
+        this.logger.error(`Error leaving call room ${roomId}: ${err}`);
+      }
     }
 
     // Free a held upload lock if the user closed the tab / dropped mid-upload,

@@ -9,7 +9,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <Toaster
         position="top-right"
-        theme="light"
+        theme="dark"
         duration={5000}
         closeButton={false}
         gap={10}

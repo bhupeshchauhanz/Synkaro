@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, ArrowLeft, Mic, Video, Camera, AlertCircle, Phone } from 'lucide-react';
@@ -136,6 +136,8 @@ export function CallShell({ roomId }: { roomId: string }) {
     }
   };
 
+  const onLeave = useCallback(() => router.replace(`/room/${roomId}`), [router, roomId]);
+
   if (status !== 'authenticated' || !user) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -152,7 +154,7 @@ export function CallShell({ roomId }: { roomId: string }) {
         serverUrl={serverUrl}
         enableVideo={enableVideo}
         enableAudio={enableAudio}
-        onLeave={() => router.replace(`/room/${roomId}`)}
+        onLeave={onLeave}
       />
     );
   }

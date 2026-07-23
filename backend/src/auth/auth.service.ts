@@ -9,7 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { generateOtp } from '../common/utils/invite-code.util';
@@ -179,7 +179,7 @@ export class AuthService {
       });
     }
 
-    if (record.otp !== otp) {
+    if (!timingSafeEqual(Buffer.from(record.otp), Buffer.from(otp))) {
       // Increment attempt counter — merge with existing metadata, don't overwrite
       await this.prisma.emailOtp.update({
         where: { id: record.id },

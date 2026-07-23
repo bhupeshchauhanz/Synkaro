@@ -299,18 +299,14 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) return { deleted: false, error: 'User not found' };
 
-    // Delete user's messages first
-    await this.prisma.message.deleteMany({ where: { senderId: id } });
-    // Delete user's room memberships
-    await this.prisma.roomMember.deleteMany({ where: { userId: id } });
-    // Delete user's uploaded files
-    await this.prisma.uploadedFile.deleteMany({ where: { uploadedById: id } });
-    // Delete user's watch history
-    await this.prisma.watchHistory.deleteMany({ where: { userId: id } });
-    // Delete refresh tokens
-    await this.prisma.refreshToken.deleteMany({ where: { userId: id } });
-    // Delete the user
-    await this.prisma.user.delete({ where: { id } });
+    await this.prisma.$transaction([
+      this.prisma.message.deleteMany({ where: { senderId: id } }),
+      this.prisma.roomMember.deleteMany({ where: { userId: id } }),
+      this.prisma.uploadedFile.deleteMany({ where: { uploadedById: id } }),
+      this.prisma.watchHistory.deleteMany({ where: { userId: id } }),
+      this.prisma.refreshToken.deleteMany({ where: { userId: id } }),
+      this.prisma.user.delete({ where: { id } }),
+    ]);
 
     return { deleted: true, message: `User ${user.username} deleted` };
   }
@@ -319,18 +315,14 @@ export class AdminService {
     const room = await this.prisma.room.findUnique({ where: { id } });
     if (!room) return { deleted: false, error: 'Room not found' };
 
-    // Delete room's messages
-    await this.prisma.message.deleteMany({ where: { roomId: id } });
-    // Delete room's members
-    await this.prisma.roomMember.deleteMany({ where: { roomId: id } });
-    // Delete room's files
-    await this.prisma.uploadedFile.deleteMany({ where: { roomId: id } });
-    // Delete room's watch history
-    await this.prisma.watchHistory.deleteMany({ where: { roomId: id } });
-    // Delete room's watchlist
-    await this.prisma.watchlistItem.deleteMany({ where: { roomId: id } });
-    // Delete the room
-    await this.prisma.room.delete({ where: { id } });
+    await this.prisma.$transaction([
+      this.prisma.message.deleteMany({ where: { roomId: id } }),
+      this.prisma.roomMember.deleteMany({ where: { roomId: id } }),
+      this.prisma.uploadedFile.deleteMany({ where: { roomId: id } }),
+      this.prisma.watchHistory.deleteMany({ where: { roomId: id } }),
+      this.prisma.watchlistItem.deleteMany({ where: { roomId: id } }),
+      this.prisma.room.delete({ where: { id } }),
+    ]);
 
     return { deleted: true, message: `Room ${room.name} deleted` };
   }

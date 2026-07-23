@@ -43,6 +43,12 @@ export class ChatService {
   ) {
     const encKey = config.get<string>('CHAT_ENCRYPTION_KEY') ?? config.get<string>('JWT_SECRET');
     if (!encKey) throw new Error('CHAT_ENCRYPTION_KEY or JWT_SECRET env var is required');
+    if (!config.get<string>('CHAT_ENCRYPTION_KEY')) {
+      console.warn(
+        '⚠ CHAT_ENCRYPTION_KEY is not set — falling back to JWT_SECRET for chat encryption. ' +
+        'Set CHAT_ENCRYPTION_KEY for proper key separation.',
+      );
+    }
     this.secret = encKey;
     this.uploadDir = config.get<string>('UPLOAD_DIR') ?? path.join(process.cwd(), 'uploads');
   }

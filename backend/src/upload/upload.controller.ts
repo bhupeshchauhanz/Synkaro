@@ -70,13 +70,9 @@ export class UploadController {
     if (!file) {
       throw new BadRequestException({ message: 'Chunk missing', code: 'CHUNK_MISSING' });
     }
-    // Verify room membership if roomId is provided
-    if (body.roomId) {
-      const { PrismaService } = await import('../prisma/prisma.service');
-      // Validate uploadId format to prevent path traversal
-      if (!/^[a-zA-Z0-9_-]+$/.test(body.uploadId)) {
-        throw new BadRequestException({ message: 'Invalid uploadId', code: 'INVALID_UPLOAD_ID' });
-      }
+    // Validate uploadId format to prevent path traversal
+    if (!/^[a-zA-Z0-9_-]+$/.test(body.uploadId)) {
+      throw new BadRequestException({ message: 'Invalid uploadId', code: 'INVALID_UPLOAD_ID' });
     }
     return this.upload.writeChunk(body.uploadId, Number(body.chunkIndex), file.buffer);
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Phone, X, Maximize2 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
@@ -20,6 +21,7 @@ interface ActiveCallInfo {
  * Allows quick return to the call in fullscreen.
  */
 export function ActiveCallIndicator() {
+  const router = useRouter();
   const { user, status } = useAuthStore();
   const [activeCall, setActiveCall] = useState<ActiveCallInfo | null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -64,7 +66,7 @@ export function ActiveCallIndicator() {
         redirectTimerRef.current = null;
         stopSfx(audioRef.current);
         audioRef.current = null;
-        window.location.href = `/room/${data.roomId}/call`;
+        router.push(`/room/${data.roomId}/call`);
       }, 3000);
     };
 

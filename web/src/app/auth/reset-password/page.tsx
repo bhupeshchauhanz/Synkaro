@@ -63,7 +63,7 @@ function ResetInner() {
           type="password"
           required
           minLength={8}
-          maxLength={20}
+          maxLength={64}
           placeholder="New password"
           className="input"
           value={password}

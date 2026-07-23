@@ -187,7 +187,30 @@ export class RoomsService {
       throw new NotFoundException({ message: 'Not a member of this room', code: 'NOT_ROOM_MEMBER' });
     }
     if (room.ownerId === userId) {
-      await this.prisma.room.delete({ where: { id: roomId } });
+      const otherMembers = await this.prisma.roomMember.findMany({
+        where: { roomId, userId: { not: userId } },
+        orderBy: { joinedAt: 'asc' },
+      });
+      if (otherMembers.length > 0) {
+        // Transfer ownership to the first other member
+        const newOwner = otherMembers[0];
+        await this.prisma.$transaction([
+          this.prisma.room.update({
+            where: { id: roomId },
+            data: { ownerId: newOwner.userId },
+          }),
+          this.prisma.roomMember.update({
+            where: { roomId_userId: { roomId, userId: newOwner.userId } },
+            data: { role: 'host' },
+          }),
+          this.prisma.roomMember.delete({
+            where: { roomId_userId: { roomId, userId } },
+          }),
+        ]);
+      } else {
+        // Last member — safe to delete
+        await this.prisma.room.delete({ where: { id: roomId } });
+      }
       return;
     }
     await this.prisma.roomMember.delete({
