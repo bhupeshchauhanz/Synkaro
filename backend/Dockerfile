@@ -16,10 +16,12 @@ RUN pip3 install --break-system-packages -U yt-dlp
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+
+# Auto-push schema on first start (safe: idempotent, skips if already synced)
+COPY --from=builder /app/prisma ./prisma
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/main.js"]
