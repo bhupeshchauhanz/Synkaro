@@ -39,11 +39,17 @@ const WAIT_ALONE_SECONDS = 300;
 
 export function CallRoom({ roomId, token, serverUrl, enableVideo, enableAudio, onLeave }: Props) {
   const [error, setError] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
 
   useEffect(() => {
     preloadSfx(); // warm up ring/sfx so they play instantly (no 2-3s delay)
     const socket = getSocket();
-    const join = () => socket.emit('call:join', { roomId });
+    const join = () => {
+      // Ensure socket is connected and authenticated before joining call
+      if (socket.connected && socket.auth) {
+        socket.emit('call:join', { roomId });
+      }
+    };
     if (socket.connected) join();
     socket.on('connect', join);
     const onEnded = (p: { roomId?: string }) => {
@@ -109,14 +115,28 @@ export function CallRoom({ roomId, token, serverUrl, enableVideo, enableAudio, o
             videoCodec: 'vp8',
           },
         }}
-        onDisconnected={() => undefined}
+        onDisconnected={() => {
+          setReconnecting(true);
+          // LiveKit has built-in auto-reconnect; show overlay while reconnecting
+        }}
+        onConnected={() => setReconnecting(false)}
         onError={(err) => {
           const msg = err?.message ?? 'Unknown LiveKit error';
           if (msg.includes('publish track when not connected')) return;
+          // Don't show error during reconnect attempts
+          if (reconnecting) return;
           setError(msg);
         }}
         className="h-full w-full"
       >
+        {reconnecting && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
+              <p className="text-sm text-white/80">Reconnecting...</p>
+            </div>
+          </div>
+        )}
         <CallLayout roomId={roomId} onLeave={onLeave} initialAudio={enableAudio} initialVideo={enableVideo} />
         <RoomAudioRenderer />
       </LiveKitRoom>
