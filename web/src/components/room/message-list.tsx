@@ -33,14 +33,14 @@ function ReadMoreText({ text }: { text: string }) {
   const nextThreshold = READ_MORE_THRESHOLDS[expandLevel + 1];
 
   if (!needsTruncation || isFullyExpanded) {
-    return <span className="break-words whitespace-pre-wrap">{text}</span>;
+    return <span className="break-words whitespace-pre-wrap overflow-wrap-anywhere">{text}</span>;
   }
 
   const displayText = truncateToWords(text, currentThreshold);
   const remainingWords = totalWords - currentThreshold;
 
   return (
-    <span className="break-words whitespace-pre-wrap">
+    <span className="break-words whitespace-pre-wrap overflow-wrap-anywhere">
       {displayText}{' '}
       <button
         onClick={(e) => {
@@ -229,7 +229,7 @@ export function MessageList({
                   </div>
                 ) : (
                   <div
-                    className={`rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-sm ${
+                    className={`rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-sm overflow-hidden break-words ${
                       own
                         ? 'bg-white text-black rounded-tr-sm'
                         : 'bg-white/[0.9] text-black rounded-tl-sm'

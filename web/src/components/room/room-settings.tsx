@@ -122,12 +122,18 @@ export function RoomSettings({
     try {
       const body: Record<string, string> = {};
       if (roomNick !== (currentRoomNickname ?? '')) body.nickname = roomNick;
-      if (background !== (currentBackground ?? '')) body.background = background;
-      if (Object.keys(body).length > 0) {
-        await api.patch(`/rooms/${roomId}`, body);
-        toast.success('Room updated');
-        onUpdated();
+      // Always include background on background tab so backend gets the value
+      if (tab === 'background' || background !== (currentBackground ?? '')) {
+        body.background = background;
       }
+      if (Object.keys(body).length === 0) {
+        toast.info('No changes to save');
+        setSaving(false);
+        return;
+      }
+      await api.patch(`/rooms/${roomId}`, body);
+      toast.success('Room updated');
+      onUpdated();
     } catch (err) {
       toast.error(getApiError(err).error);
     } finally {

@@ -26,6 +26,7 @@
 }
 
 * { box-sizing: border-box; }
+.overflow-wrap-anywhere { overflow-wrap: anywhere; }
 
 html { scroll-behavior: smooth; }
 
