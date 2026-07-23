@@ -684,6 +684,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (isNew) {
       // Notify all room members about incoming call
       const room = await this.prisma.room.findUnique({ where: { id: body.roomId } });
+      const roomSockets = await this.server.in(body.roomId).fetchSockets();
+      this.logger.log(`call:incoming emitting to room ${body.roomId} — ${roomSockets.length} sockets in room`);
       this.server.to(body.roomId).emit('call:incoming', {
         roomId: body.roomId,
         startedByName: user.username,
