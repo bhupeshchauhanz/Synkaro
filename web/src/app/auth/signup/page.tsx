@@ -169,7 +169,7 @@ export default function SignupPage() {
                     {...register('password', {
                       required: 'Password is required',
                       minLength: { value: 8, message: 'At least 8 characters' },
-                      maxLength: { value: 20, message: 'Max 20 characters' },
+                      maxLength: { value: 64, message: 'Max 64 characters' },
                     })}
                   />
                   <button

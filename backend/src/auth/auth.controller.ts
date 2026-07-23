@@ -200,9 +200,18 @@ export class AuthController {
     return opts;
   }
 
+  private parseTtlToMs(raw: string, defaultMs: number): number {
+    const num = Number(raw.match(/^(\d+)/)?.[1] ?? 0);
+    if (num <= 0) return defaultMs;
+    if (/h/i.test(raw) && !/d/i.test(raw)) return num * 60 * 60 * 1000;
+    return num * 24 * 60 * 60 * 1000;
+  }
+
   private setAuthCookies(res: Response, accessToken: string, refreshToken: string): void {
-    res.cookie('access_token', accessToken, this.cookieBaseOpts(15 * 60 * 1000));
-    res.cookie('refresh_token', refreshToken, this.cookieBaseOpts(30 * 24 * 60 * 60 * 1000));
+    const accessTtl = this.parseTtlToMs(this.config.get<string>('JWT_ACCESS_TTL') ?? '15m', 15 * 60 * 1000);
+    const refreshTtl = this.parseTtlToMs(this.config.get<string>('JWT_REFRESH_TTL') ?? '30d', 30 * 24 * 60 * 60 * 1000);
+    res.cookie('access_token', accessToken, this.cookieBaseOpts(accessTtl));
+    res.cookie('refresh_token', refreshToken, this.cookieBaseOpts(refreshTtl));
   }
 
   private clearAuthCookies(res: Response): void {

@@ -22,6 +22,8 @@ export function encryptText(plain: string, secret: string): string {
 export function decryptText(encoded: string, secret: string): string {
   try {
     const buf = Buffer.from(encoded, 'base64');
+    // Minimum length: 12 (iv) + 16 (tag) + 1 (at least 1 byte ciphertext) = 29
+    if (buf.length < 29) return '';
     const iv = buf.subarray(0, 12);
     const tag = buf.subarray(12, 28);
     const enc = buf.subarray(28);

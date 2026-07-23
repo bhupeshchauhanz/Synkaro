@@ -13,6 +13,9 @@ interface UpdateProfileInput {
   dateOfBirth?: string;
 }
 
+const ALLOWED_THEMES = ['dark', 'light', 'midnight', 'soft-pink', 'lavender', 'sky-blue', 'peach'];
+const MAX_AVATAR_LENGTH = 2000;
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -26,13 +29,23 @@ export class UsersService {
         throw new ConflictException({ message: 'Username taken', code: 'USERNAME_TAKEN' });
       }
     }
+    // Sanitize avatar URL — strip any HTML and enforce length limit
+    let avatar: string | null | undefined = input.avatar;
+    if (avatar !== undefined) {
+      avatar = sanitizeText(avatar).slice(0, MAX_AVATAR_LENGTH) || null;
+    }
+    // Validate theme preference
+    let themePreference = input.themePreference;
+    if (themePreference !== undefined && !ALLOWED_THEMES.includes(themePreference)) {
+      themePreference = 'dark';
+    }
     return this.prisma.user.update({
       where: { id: userId },
       data: {
         username: input.username,
         bio: input.bio !== undefined ? sanitizeText(input.bio) : undefined,
-        avatar: input.avatar,
-        themePreference: input.themePreference,
+        avatar,
+        themePreference,
         phone: input.phone !== undefined ? sanitizeText(input.phone) : undefined,
         address: input.address !== undefined ? sanitizeText(input.address) : undefined,
         dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : undefined,

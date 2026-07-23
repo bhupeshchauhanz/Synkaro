@@ -169,8 +169,8 @@ export class AuthService {
     }
 
     // Brute-force protection: track attempts in metadata
-    const meta = (record as unknown as { metadata?: { attempts?: number } }).metadata;
-    const attempts = (meta?.attempts ?? 0) + 1;
+    const meta = (record as unknown as { metadata?: Record<string, unknown> }).metadata ?? {};
+    const attempts = ((meta.attempts as number) ?? 0) + 1;
     if (attempts > OTP_MAX_ATTEMPTS) {
       await this.prisma.emailOtp.update({ where: { id: record.id }, data: { used: true } });
       throw new BadRequestException({
@@ -180,10 +180,10 @@ export class AuthService {
     }
 
     if (record.otp !== otp) {
-      // Increment attempt counter
+      // Increment attempt counter — merge with existing metadata, don't overwrite
       await this.prisma.emailOtp.update({
         where: { id: record.id },
-        data: { metadata: { attempts } } as never,
+        data: { metadata: { ...meta, attempts } } as never,
       });
       throw new BadRequestException({ message: 'Invalid code', code: 'OTP_INVALID' });
     }
@@ -196,6 +196,7 @@ export class AuthService {
       }),
     ]);
 
+    // Fetch user for welcome email (user was just verified above)
     const user = await this.prisma.user.findUnique({ where: { email: cleanEmail } });
     if (user) {
       try {
@@ -339,10 +340,12 @@ export class AuthService {
     );
     const refreshRaw = randomBytes(48).toString('hex');
     const refreshHash = createHash('sha256').update(refreshRaw).digest('hex');
-    const refreshTtlDays = Number(
-      (this.config.get<string>('JWT_REFRESH_TTL') ?? '30d').replace(/[^\d]/g, ''),
-    );
-    const expiresAt = new Date(Date.now() + refreshTtlDays * 24 * 60 * 60 * 1000);
+    const refreshTtlRaw = this.config.get<string>('JWT_REFRESH_TTL') ?? '30d';
+    const numMatch = refreshTtlRaw.match(/^(\d+)/);
+    const num = numMatch ? Number(numMatch[1]) : 30;
+    const isHours = /h/i.test(refreshTtlRaw) && !/d/i.test(refreshTtlRaw);
+    const refreshTtlMs = isHours ? num * 60 * 60 * 1000 : num * 24 * 60 * 60 * 1000;
+    const expiresAt = new Date(Date.now() + refreshTtlMs);
 
     await this.prisma.refreshToken.create({
       data: {
@@ -357,19 +360,22 @@ export class AuthService {
   }
 
   private async issueOtp(email: string, purpose: 'verify' | 'reset'): Promise<void> {
-    await this.prisma.emailOtp.updateMany({
-      where: { email, purpose, used: false },
-      data: { used: true },
-    });
+    // Atomic: mark old OTPs as used and create new one in a transaction
     const otp = generateOtp(6);
-    await this.prisma.emailOtp.create({
-      data: {
-        email,
-        otp,
-        purpose,
-        expiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60_000),
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.emailOtp.updateMany({
+        where: { email, purpose, used: false },
+        data: { used: true },
+      }),
+      this.prisma.emailOtp.create({
+        data: {
+          email,
+          otp,
+          purpose,
+          expiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60_000),
+        },
+      }),
+    ]);
     try {
       await this.mail.sendOtp(email, otp);
     } catch (err) {

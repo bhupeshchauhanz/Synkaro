@@ -13,7 +13,7 @@ import {
   MoreVertical,
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from '@/lib/toast';
 
 interface Member {
@@ -40,14 +40,18 @@ export function RoomHeader({
   onOpenSettings: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const copy = async () => {
     const url = `${window.location.origin}/join/${inviteCode}`;
-    await navigator.clipboard.writeText(url);
+    try { await navigator.clipboard.writeText(url); } catch { /* noop */ }
     setCopied(true);
     toast.success('Invite link copied');
-    setTimeout(() => setCopied(false), 1500);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
   };
+
+  useEffect(() => () => { if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current); }, []);
 
   return (
     <header className="flex items-center justify-between border-b border-white/[0.06] bg-black/70 backdrop-blur-2xl px-4 py-3 md:px-6">

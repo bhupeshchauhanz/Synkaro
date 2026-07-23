@@ -1,9 +1,10 @@
-import { baseTemplate, gradientButtonHtml } from './base.template';
+import { baseTemplate, gradientButtonHtml, escapeHtml } from './base.template';
 
 export function welcomeEmailTemplate(name: string, appUrl: string): string {
+  const safeName = escapeHtml(name);
   const content = `
     <h1 style="font-size:28px;font-weight:800;margin:0 0 8px 0;color:#fafafa;letter-spacing:-0.035em;">
-      Welcome to Synkaro, ${name} 🎬
+      Welcome to Synkaro, ${safeName} 🎬
     </h1>
     <p style="font-size:15px;line-height:1.8;color:#a1a1aa;margin:0 0 28px 0;">
       Your private space to watch movies, YouTube, and video-call together — perfectly synced.
@@ -74,5 +75,5 @@ export function welcomeEmailTemplate(name: string, appUrl: string): string {
     <p style="font-size:12px;color:#52525b;margin:0;line-height:1.6;text-align:center;">
       Questions? Reply to this email — goes straight to the founder.
     </p>`;
-  return baseTemplate(content, { preheader: `Welcome to Synkaro, ${name} — all features are free!` });
+  return baseTemplate(content, { preheader: `Welcome to Synkaro, ${safeName} — all features are free!` });
 }

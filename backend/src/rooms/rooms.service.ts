@@ -203,7 +203,6 @@ export class RoomsService {
       nickname?: string;
       theme?: string;
       background?: string;
-      premiumUserId?: string;
     },
   ): Promise<Room> {
     await this.assertHost(roomId, userId);

@@ -27,7 +27,7 @@ import {
 } from './dto/room.dto';
 import { RoomMemberGuard } from './guards/room-member.guard';
 
-const ALLOWED_BG_MIME = ['image/jpeg', 'image/png', 'image/jpg'];
+const ALLOWED_BG_MIME = ['image/jpeg', 'image/png'];
 const MAX_BG_SIZE = 4 * 1024 * 1024;
 
 @ApiTags('rooms')
@@ -100,17 +100,15 @@ export class RoomsController {
         code: 'INVALID_IMAGE_TYPE',
       });
     }
-    if (file.size > MAX_BG_SIZE) {
-      throw new BadRequestException({
-        message: 'Image must be under 4 MB',
-        code: 'IMAGE_TOO_LARGE',
-      });
-    }
     const ext = file.mimetype === 'image/png' ? 'png' : 'jpg';
     const dir = path.join(this.uploadDir, roomId, 'backgrounds');
     await fs.mkdir(dir, { recursive: true });
-    const fname = `bg-${Date.now()}.${ext}`;
-    await fs.writeFile(path.join(dir, fname), file.buffer);
+    const fname = `bg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    try {
+      await fs.writeFile(path.join(dir, fname), file.buffer);
+    } catch {
+      throw new BadRequestException({ message: 'Failed to save image', code: 'SAVE_FAILED' });
+    }
     const publicPath = `/uploads/${roomId}/backgrounds/${fname}`;
     return this.rooms.setBackground(user.id, roomId, publicPath);
   }

@@ -10,14 +10,9 @@ const withCopyAction = (message: string | React.ReactNode, options?: ExternalToa
     action: {
       label: 'Copy',
       onClick: () => {
-        navigator.clipboard.writeText(msgStr);
-        sonnerToast.success('Copied to clipboard');
+        try { navigator.clipboard.writeText(msgStr); } catch { /* noop */ }
       }
     },
-    cancel: {
-      label: 'Close',
-      onClick: () => {} // Sonner dismisses on cancel click
-    }
   };
 };
 

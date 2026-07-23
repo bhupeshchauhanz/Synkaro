@@ -34,8 +34,6 @@ model User {
   watchHistory   WatchHistory[]
   refreshTokens  RefreshToken[]
   uploadedFiles  UploadedFile[] @relation("Uploader")
-
-  @@index([email])
 }
 
 model RefreshToken {

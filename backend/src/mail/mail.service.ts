@@ -43,7 +43,7 @@ export class MailService {
       await this.transporter.sendMail({ from: this.from, to, subject, html });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'unknown';
-      this.logger.error(`Failed to send mail to ${to}: ${msg}`);
+      this.logger.error(`Failed to send mail (${subject}): ${msg}`);
       throw err;
     }
   }

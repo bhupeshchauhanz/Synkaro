@@ -106,7 +106,7 @@ export async function uploadFile({
       roomId,
       fileName: file.name,
       totalChunks,
-      mimeType: file.type || 'video/mp4',
+      mimeType: file.type || 'application/octet-stream',
     },
     { timeout: 0, signal },
   );

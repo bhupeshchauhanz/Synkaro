@@ -2,8 +2,18 @@ interface BaseOpts {
   preheader?: string;
 }
 
+/** Escape HTML special characters to prevent injection in email templates. */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function baseTemplate(content: string, opts: BaseOpts = {}): string {
-  const preheader = opts.preheader ?? '';
+  const preheader = escapeHtml(opts.preheader ?? '');
   const year = new Date().getFullYear();
   return `<!DOCTYPE html>
 <html lang="en">
@@ -99,14 +109,16 @@ export function baseTemplate(content: string, opts: BaseOpts = {}): string {
 }
 
 export function buttonHtml(label: string, href: string): string {
+  const safeLabel = escapeHtml(label);
+  const safeHref = escapeHtml(href);
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
     <tr>
       <td style="border-radius:9999px;background:#ffffff;padding:1px;">
         <table role="presentation" cellpadding="0" cellspacing="0">
           <tr>
             <td style="background:#000000;border-radius:9999px;">
-              <a href="${href}" style="display:inline-block;padding:14px 36px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-0.01em;">
-                ${label}
+              <a href="${safeHref}" style="display:inline-block;padding:14px 36px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-0.01em;">
+                ${safeLabel}
               </a>
             </td>
           </tr>
@@ -117,11 +129,13 @@ export function buttonHtml(label: string, href: string): string {
 }
 
 export function gradientButtonHtml(label: string, href: string): string {
+  const safeLabel = escapeHtml(label);
+  const safeHref = escapeHtml(href);
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
     <tr>
       <td style="border-radius:9999px;background:#ffffff;">
-        <a href="${href}" style="display:inline-block;padding:14px 36px;color:#000000;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-0.01em;">
-          ${label}
+        <a href="${safeHref}" style="display:inline-block;padding:14px 36px;color:#000000;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-0.01em;">
+          ${safeLabel}
         </a>
       </td>
     </tr>
