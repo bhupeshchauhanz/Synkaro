@@ -73,7 +73,7 @@ export function SyncVideoPlayer({
   const bufferingReported = useRef(false);
 
   // Debounced buffering report: only tell others we're stalling if it lasts
-  // >1.5s. This stops brief initial-load / seek stalls from triggering the
+  // >2s. This stops brief initial-load / seek stalls from triggering the
   // cross-client "pause & wait" loop (the start-of-video play/pause flicker).
   const reportBuffering = useCallback((b: boolean) => {
     if (b) {
@@ -82,7 +82,7 @@ export function SyncVideoPlayer({
         bufferTimer.current = null;
         bufferingReported.current = true;
         onBuffering?.(true);
-      }, 1500);
+      }, 2000);
     } else {
       if (bufferTimer.current) { clearTimeout(bufferTimer.current); bufferTimer.current = null; }
       if (bufferingReported.current) { bufferingReported.current = false; onBuffering?.(false); }
@@ -131,7 +131,7 @@ export function SyncVideoPlayer({
 
   // Smooth continuous drift correction: nudge playbackRate instead of jumping,
   // so nobody gets a jarring forward-skip. Big drifts still hard-align.
-  // Runs every 800ms for tighter sync convergence (~2 cycles to correct 0.5s drift).
+  // Runs every 500ms for tighter sync convergence (~2 cycles to correct 0.5s drift).
   useEffect(() => {
     if (!state?.isPlaying) return;
     let lastSynced = true;
@@ -140,19 +140,22 @@ export function SyncVideoPlayer({
       if (!v || v.paused || waitingFor) return;
       const target = state.timestamp + (Date.now() - state.updatedAt) / 1000;
       const drift = v.currentTime - target; // + ahead, - behind
-      if (Math.abs(drift) > 2.5) {
+      if (Math.abs(drift) > 2.0) {
+        // Hard-align on large drift (>2s) for instant convergence
         v.currentTime = Math.max(0, target);
         v.playbackRate = 1;
-      } else if (drift > 0.3) {
-        v.playbackRate = 0.93;
-      } else if (drift < -0.3) {
-        v.playbackRate = 1.07;
+      } else if (Math.abs(drift) > 0.5) {
+        // Medium drift: use playback rate nudge
+        v.playbackRate = drift > 0 ? 0.95 : 1.05;
+      } else if (Math.abs(drift) > 0.15) {
+        // Small drift: gentle nudge
+        v.playbackRate = drift > 0 ? 0.98 : 1.02;
       } else {
         v.playbackRate = 1;
       }
-      const nowSynced = Math.abs(drift) < 1;
+      const nowSynced = Math.abs(drift) < 0.8;
       if (nowSynced !== lastSynced) { lastSynced = nowSynced; setSynced(nowSynced); }
-    }, 800);
+    }, 500);
     return () => {
       clearInterval(id);
       const v = videoRef.current;

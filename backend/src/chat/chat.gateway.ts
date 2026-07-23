@@ -328,7 +328,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  /** Toggle a persistent emoji reaction on a specific message (WhatsApp-style). */
+  /** Toggle a persistent emoji reaction on a specific message.
+   *  Only ONE reaction per user per message: adding a new one removes any previous. */
   @SubscribeMessage('message:react')
   async onMessageReact(
     @ConnectedSocket() client: AuthedSocket,
@@ -336,7 +337,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
-    // Validate emoji length
     if (!body.emoji || body.emoji.length > 10) return;
     if (!body.messageId || !body.roomId) return;
     const ok = await this.wsAuth.assertRoomMember(user.id, body.roomId);
@@ -346,12 +346,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const meta = (msg.metadata as Record<string, unknown> | null) ?? {};
     const reactions = (meta.reactions as Record<string, string[]>) ?? {};
+
+    // Remove user from ALL other emoji lists first (one reaction per user per message)
+    for (const [emoji, ids] of Object.entries(reactions)) {
+      const idx = ids.indexOf(user.id);
+      if (idx >= 0) {
+        ids.splice(idx, 1);
+        if (ids.length === 0) delete reactions[emoji];
+      }
+    }
+
+    // Now toggle the requested emoji
     const list = reactions[body.emoji] ?? [];
-    const idx = list.indexOf(user.id);
-    if (idx >= 0) list.splice(idx, 1);
-    else list.push(user.id);
-    if (list.length === 0) delete reactions[body.emoji];
-    else reactions[body.emoji] = list;
+    const existingIdx = list.indexOf(user.id);
+    if (existingIdx >= 0) {
+      // User already reacted with this emoji — remove it
+      list.splice(existingIdx, 1);
+      if (list.length === 0) delete reactions[body.emoji];
+    } else {
+      // Add new reaction
+      list.push(user.id);
+      reactions[body.emoji] = list;
+    }
     meta.reactions = reactions;
 
     await this.prisma.message.update({

@@ -8,6 +8,55 @@ import { getSocket } from '@/lib/socket';
 
 const REACTION_EMOJIS = ['❤️', '😂', '😭', '🫶', '😘', '🔥', '👍', '👏'];
 
+// Progressive read-more thresholds (word counts)
+const READ_MORE_THRESHOLDS = [250, 500, 700];
+
+function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function truncateToWords(text: string, wordCount: number): string {
+  const words = text.split(/\s+/);
+  if (words.length <= wordCount) return text;
+  return words.slice(0, wordCount).join(' ');
+}
+
+/** Progressive "read more" text component: 250 → 500 → 700 words */
+function ReadMoreText({ text }: { text: string }) {
+  const totalWords = countWords(text);
+  const [expandLevel, setExpandLevel] = useState(0); // 0 = initial, 1 = first expand, etc.
+
+  // Find the appropriate threshold
+  const currentThreshold = READ_MORE_THRESHOLDS[expandLevel] ?? totalWords;
+  const needsTruncation = totalWords > READ_MORE_THRESHOLDS[0];
+  const isFullyExpanded = currentThreshold >= totalWords;
+  const nextThreshold = READ_MORE_THRESHOLDS[expandLevel + 1];
+
+  if (!needsTruncation || isFullyExpanded) {
+    return <span className="break-words whitespace-pre-wrap">{text}</span>;
+  }
+
+  const displayText = truncateToWords(text, currentThreshold);
+  const remainingWords = totalWords - currentThreshold;
+
+  return (
+    <span className="break-words whitespace-pre-wrap">
+      {displayText}{' '}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpandLevel((prev) => prev + 1);
+        }}
+        className="inline font-semibold text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+      >
+        ...read more ({nextThreshold && nextThreshold < totalWords
+          ? `+${Math.min(nextThreshold, totalWords) - currentThreshold}`
+          : remainingWords} words)
+      </button>
+    </span>
+  );
+}
+
 function formatStamp(d: Date | string): string {
   const date = typeof d === 'string' ? new Date(d) : d;
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -154,7 +203,7 @@ export function MessageList({
             >
               
 
-              <div className={`flex max-w-[80%] md:max-w-[65%] flex-col ${own ? 'items-end' : 'items-start'}`}>
+              <div className={`flex max-w-[75%] md:max-w-[55%] flex-col ${own ? 'items-end' : 'items-start'}`}>
                 {!grouped && !own ? (
                   <span className="mb-0.5 ml-1 text-[11px] font-medium text-text-tertiary">
                     {m.username}
@@ -183,7 +232,7 @@ export function MessageList({
                         : 'bg-white/[0.9] text-black rounded-tl-sm'
                     }`}
                   >
-                    {m.content}
+                    {m.content ? <ReadMoreText text={m.content} /> : null}
                   </div>
                 )}
                 {/* Persisted reactions stuck under the message (WhatsApp-style) */}

@@ -56,6 +56,8 @@ export class CallService {
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
+      // Quality grants for better audio/video
+      canPublishSources: undefined, // allow all sources
     });
     const token = await at.toJwt();
     return { token, url: this.url };

@@ -54,7 +54,15 @@ export function CallRoom({ roomId, token, serverUrl, enableVideo, enableAudio, o
     };
     socket.on('call:ended', onEnded);
     socket.on('call:declined', onDeclined);
+
+    // Ensure call:leave is sent on tab close / page unload too
+    const handleBeforeUnload = () => {
+      socket.emit('call:leave', { roomId });
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       socket.off('connect', join);
       socket.off('call:ended', onEnded);
       socket.off('call:declined', onDeclined);
@@ -85,7 +93,22 @@ export function CallRoom({ roomId, token, serverUrl, enableVideo, enableAudio, o
         connect
         audio={false}
         video={false}
-        options={{ adaptiveStream: true, dynacast: true }}
+        options={{
+          adaptiveStream: true,
+          dynacast: true,
+          audioCaptureDefaults: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          videoCaptureDefaults: {
+            resolution: VideoPresets.h720,
+            facingMode: 'user',
+          },
+          publishDefaults: {
+            videoCodec: 'vp8',
+          },
+        }}
         onDisconnected={() => undefined}
         onError={(err) => {
           const msg = err?.message ?? 'Unknown LiveKit error';
@@ -179,6 +202,7 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
       const poor = quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost;
       if (poor) {
         if (poorTimer || !lp.isCameraEnabled) return;
+        // Turn off camera faster (6s instead of 10s) to keep audio smooth
         poorTimer = setTimeout(() => {
           poorTimer = null;
           if (lp.isCameraEnabled) {
@@ -190,7 +214,7 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
               void lp.publishData(payload, { reliable: true });
             } catch {}
           }
-        }, 10000);
+        }, 6000);
       } else {
         if (poorTimer) { clearTimeout(poorTimer); poorTimer = null; }
         if (autoOff && !lp.isCameraEnabled) {
@@ -217,8 +241,9 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
   const ringRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     if (alone && !connecting) {
-      if (!ringRef.current) ringRef.current = playSfx('outgoing', { loop: true });
+      if (!ringRef.current) ringRef.current = playSfx('outgoing', { loop: true, volume: 0.5 });
     } else if (ringRef.current) {
+      // Stop ring immediately when someone joins or connecting starts
       stopSfx(ringRef.current);
       ringRef.current = null;
     }
