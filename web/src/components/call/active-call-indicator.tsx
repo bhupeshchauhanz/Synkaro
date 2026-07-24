@@ -41,6 +41,19 @@ export function ActiveCallIndicator() {
     audioRef.current = null;
   }, []);
 
+  // Auto-dismiss incoming call after room-type timeout (couple: 120s, friend: 300s)
+  const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (incomingCall) {
+      if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
+      const timeoutMs = incomingCall.roomType === 'couple' ? 120_000 : 300_000;
+      ringTimeoutRef.current = setTimeout(() => {
+        dismissIncoming();
+      }, timeoutMs);
+    }
+    return () => { if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; } };
+  }, [incomingCall, dismissIncoming]);
+
   useEffect(() => {
     if (status !== 'authenticated' || !user) return;
     preloadSfx();
