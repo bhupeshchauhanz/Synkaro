@@ -30,12 +30,15 @@ export function Hero() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="badge mb-8"
+          className="mb-8 inline-flex items-center gap-2.5 rounded-full border border-white/[0.12] bg-white/[0.06] px-5 py-2.5 backdrop-blur-md"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-soft" />
-          <span className="text-text-primary">Free for everyone</span>
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
+          </span>
+          <span className="text-sm font-semibold text-white">Free for everyone</span>
           <span className="text-text-tertiary">·</span>
-          <span className="text-text-secondary">No credit card</span>
+          <span className="text-sm text-text-secondary">No credit card needed</span>
         </motion.div>
 
         <motion.h1

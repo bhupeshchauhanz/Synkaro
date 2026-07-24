@@ -34,7 +34,9 @@ export function Pricing() {
     <section id="pricing" className="section relative">
       <div className="mx-auto max-w-5xl">
         <div className="text-center">
-          <div className="badge mx-auto mb-5">No catch</div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.06] px-4 py-1.5 mb-5">
+            <span className="text-xs font-medium text-success">No catch</span>
+          </div>
           <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
             Everything is{' '}
             <span className="gradient-text">completely free.</span>
@@ -52,16 +54,23 @@ export function Pricing() {
           className="mt-12 mx-auto max-w-lg"
         >
           <div className="relative overflow-hidden rounded-2xl border border-white/[0.12] bg-bg-card p-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white">
-              <Zap className="h-6 w-6 text-black" strokeWidth={2.5} />
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent" />
+            <div className="relative">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white">
+                <Zap className="h-6 w-6 text-black" strokeWidth={2.5} />
+              </div>
+              <h3 className="font-display text-5xl font-bold tracking-tightest">$0</h3>
+              <p className="mt-1 text-sm text-text-secondary">
+                All features, forever free
+              </p>
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                <span className="text-xs font-medium text-success">Free for everyone</span>
+              </div>
+              <Link href="/auth/signup" className="btn-primary mt-6 w-full">
+                Get started free
+              </Link>
             </div>
-            <h3 className="font-display text-5xl font-bold tracking-tightest">$0</h3>
-            <p className="mt-1 text-sm text-text-secondary">
-              All features, forever free
-            </p>
-            <Link href="/auth/signup" className="btn-primary mt-6 w-full">
-              Get started free
-            </Link>
           </div>
         </motion.div>
 
