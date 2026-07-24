@@ -126,7 +126,7 @@ html, body {
   .badge {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium;
   }
-  .section { @apply px-6 py-20 md:py-24; }
+  .section { @apply px-6 py-24 md:py-32; }
 }
 
 /* LiveKit overrides */

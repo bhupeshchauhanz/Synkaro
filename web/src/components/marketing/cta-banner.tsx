@@ -14,7 +14,7 @@ export function CtaBanner() {
     setMounted(true);
   }, []);
   return (
-    <section className="relative px-6 py-24">
+    <section className="relative section">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
