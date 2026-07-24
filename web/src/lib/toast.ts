@@ -1,8 +1,8 @@
 import { toast as sonnerToast, ExternalToast } from 'sonner';
 import React from 'react';
 
-const withCopyAction = (message: string | React.ReactNode, options?: ExternalToast) => {
-  // Respect a caller-provided action (e.g. "Undo") — never clobber it with Copy.
+const withCopyAndDismiss = (message: string | React.ReactNode, options?: ExternalToast) => {
+  // Respect a caller-provided action (e.g. "Undo") — never clobber it.
   if (options?.action) return options;
   const msgStr = typeof message === 'string' ? message : 'Content copied';
   return {
@@ -13,20 +13,24 @@ const withCopyAction = (message: string | React.ReactNode, options?: ExternalToa
         try { navigator.clipboard.writeText(msgStr); } catch { /* noop */ }
       }
     },
+    cancel: {
+      label: 'Close',
+      onClick: () => {},
+    },
   };
 };
 
 export const toast = {
-  success: (message: string | React.ReactNode, data?: ExternalToast) => 
-    sonnerToast.success(message, withCopyAction(message, data)),
-  error: (message: string | React.ReactNode, data?: ExternalToast) => 
+  success: (message: string | React.ReactNode, data?: ExternalToast) =>
+    sonnerToast.success(message, withCopyAndDismiss(message, data)),
+  error: (message: string | React.ReactNode, data?: ExternalToast) =>
     sonnerToast.error(message, data),
-  info: (message: string | React.ReactNode, data?: ExternalToast) => 
-    sonnerToast.info(message, withCopyAction(message, data)),
-  warning: (message: string | React.ReactNode, data?: ExternalToast) => 
+  info: (message: string | React.ReactNode, data?: ExternalToast) =>
+    sonnerToast.info(message, withCopyAndDismiss(message, data)),
+  warning: (message: string | React.ReactNode, data?: ExternalToast) =>
     sonnerToast.warning(message, data),
-  message: (message: string | React.ReactNode, data?: ExternalToast) => 
-    sonnerToast(message, withCopyAction(message, data)),
+  message: (message: string | React.ReactNode, data?: ExternalToast) =>
+    sonnerToast(message, withCopyAndDismiss(message, data)),
   custom: sonnerToast.custom,
   dismiss: sonnerToast.dismiss,
   promise: sonnerToast.promise,
