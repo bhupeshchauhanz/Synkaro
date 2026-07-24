@@ -30,7 +30,7 @@ export function PasswordStrength({ value }: { value: string }) {
           />
         ))}
       </div>
-      <p className="mt-1.5 text-[11px] text-text-tertiary">
+      <p className="mt-1.5 text-xs text-text-tertiary">
         {score > 0 ? LABELS[score - 1] : 'Too short'}
       </p>
     </div>

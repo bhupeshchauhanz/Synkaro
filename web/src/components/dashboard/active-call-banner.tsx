@@ -118,7 +118,7 @@ export function ActiveCallBanner({
                   <p className="text-sm font-semibold tracking-tight">
                     Call going on in <span className="text-success">{call.roomName}</span>
                   </p>
-                  <p className="text-[11px] text-text-tertiary">
+                  <p className="text-xs text-text-tertiary">
                     Started by {call.startedByName} · Tap to join now
                   </p>
                 </div>

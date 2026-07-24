@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCheck, Sparkles, X } from 'lucide-react';
+import { CheckCheck, Phone, Sparkles, X } from 'lucide-react';
 import type { MessageDto } from '@/lib/socket';
 import { getSocket } from '@/lib/socket';
 
@@ -77,6 +77,7 @@ export function MessageList({
   roomId,
   members = [],
   disableLightbox = false,
+  onScroll,
 }: {
   messages: MessageDto[];
   currentUserId: string;
@@ -84,6 +85,7 @@ export function MessageList({
   roomId: string;
   members?: { id: string; username: string }[];
   disableLightbox?: boolean;
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }) {
   const nameFor = (id: string) =>
     id === currentUserId ? 'You' : members.find((m) => m.id === id)?.username ?? 'Someone';
@@ -91,6 +93,8 @@ export function MessageList({
   const [contextMenu, setContextMenu] = useState<{ messageId: string; x: number; y: number } | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null); // image URL shown fullscreen
   const [reactionSheet, setReactionSheet] = useState<string | null>(null); // messageId whose reactions are shown
+
+  // No merged ref needed — onScroll callback gives parent access to scroll position
 
   useEffect(() => {
     // Auto-scroll to bottom only if user is already near the bottom (within 200px).
@@ -160,7 +164,7 @@ export function MessageList({
   }, [contextMenu, roomId]);
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 relative z-0">
+    <div ref={containerRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 relative z-0">
       <div className="bg-chat-pattern" />
       {/* WhatsApp-style subtle pattern background */}
       <div className="mx-auto max-w-3xl space-y-0.5">
@@ -185,7 +189,8 @@ export function MessageList({
           if (isCallRecord) {
             return (
               <div key={m.id} className="my-2 flex justify-center">
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] text-text-tertiary">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-text-tertiary">
+                  <Phone className="h-3 w-3 text-success/70" />
                   {m.content}
                 </span>
               </div>
@@ -208,7 +213,7 @@ export function MessageList({
 
               <div className={`flex max-w-[75%] md:max-w-[55%] flex-col ${own ? 'items-end' : 'items-start'}`}>
                 {!grouped && !own ? (
-                  <span className="mb-0.5 ml-1 text-[11px] font-medium text-text-tertiary">
+                  <span className="mb-0.5 ml-1 text-xs font-medium text-text-tertiary">
                     {m.username}
                   </span>
                 ) : null}
@@ -254,7 +259,7 @@ export function MessageList({
                             key={emoji}
                             onClick={() => setReactionSheet(m.id)}
                             title={ids.map((id) => nameFor(id)).join(', ')}
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-all active:scale-90 ${
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-all active:scale-90 ${
                               mine
                                 ? 'border border-blue-400/40 bg-blue-500/15 text-white shadow-sm'
                                 : 'border border-white/10 bg-white/[0.06] text-text-secondary hover:bg-white/10'
@@ -293,7 +298,7 @@ export function MessageList({
         {typing.length > 0 ? (
           <div className="mt-3 flex justify-start">
             <div className="flex items-center rounded-2xl rounded-tl-sm border border-white/[0.06] bg-white/[0.08] px-4 py-2.5 backdrop-blur-md">
-              <span className="text-[11px] font-medium text-text-tertiary mr-2">
+              <span className="text-xs font-medium text-text-tertiary mr-2">
                 {typing.length === 1
                   ? typing[0]?.username
                   : typing.length === 2

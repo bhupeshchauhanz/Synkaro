@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Loader2, Plus, Users, Heart, ArrowRight } from 'lucide-react';
+import { Loader2, Phone, Plus, Users, Heart, ArrowRight } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { api, getApiError } from '@/lib/api';
 import { useAuthStore, getGreeting, isProfileComplete } from '@/lib/auth-store';
@@ -31,6 +31,7 @@ export function DashboardShell() {
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [activeCalls, setActiveCalls] = useState<Map<string, { startedByName: string }>>(new Map());
 
   useEffect(() => {
     if (status === 'idle') void load();
@@ -75,9 +76,29 @@ export function DashboardShell() {
       }
     };
 
+    const handleCallStarted = (data: { roomId: string; startedByName: string }) => {
+      setActiveCalls((prev) => {
+        const next = new Map(prev);
+        next.set(data.roomId, { startedByName: data.startedByName });
+        return next;
+      });
+    };
+
+    const handleCallEnded = (data: { roomId: string }) => {
+      setActiveCalls((prev) => {
+        const next = new Map(prev);
+        next.delete(data.roomId);
+        return next;
+      });
+    };
+
     socket.on('message:new', handleNewMessage);
+    socket.on('call:started', handleCallStarted);
+    socket.on('call:ended', handleCallEnded);
     return () => {
       socket.off('message:new', handleNewMessage);
+      socket.off('call:started', handleCallStarted);
+      socket.off('call:ended', handleCallEnded);
     };
   }, [status, user]);
 
@@ -182,7 +203,14 @@ export function DashboardShell() {
                         <Users className="h-4 w-4 text-text-primary" strokeWidth={1.75} />
                       )}
                     </div>
-                    <ArrowRight className="h-4 w-4 text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="flex items-center gap-2">
+                      {activeCalls.has(room.id) && (
+                        <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
+                          <Phone className="h-2.5 w-2.5" /> Live
+                        </span>
+                      )}
+                      <ArrowRight className="h-4 w-4 text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
                   <h3 className="font-display text-lg font-semibold tracking-tight flex items-center gap-2">
                     {room.name}
@@ -190,22 +218,31 @@ export function DashboardShell() {
                       <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
                     )}
                   </h3>
-                  <p className="mt-1 font-mono text-[11px] text-text-tertiary">{room.inviteCode}</p>
+                  <p className="mt-1 font-mono text-xs text-text-tertiary">{room.inviteCode}</p>
                   <div className="mt-5 flex items-center justify-between">
                     <div className="flex items-center -space-x-2">
                       {room.members.slice(0, 4).map((m) => (
                         <div
                           key={m.id}
-                          className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-elevated border-2 border-bg-card text-[10px] font-semibold"
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-elevated border-2 border-bg-card text-[11px] font-semibold"
                         >
                           {m.username[0]?.toUpperCase()}
                         </div>
                       ))}
                     </div>
-                    <span className="text-[11px] text-text-tertiary">
+                    <span className="text-xs text-text-tertiary">
                       {room.members.length} {room.members.length === 1 ? 'member' : 'members'}
                     </span>
                   </div>
+                  {activeCalls.has(room.id) && room.type === 'friend' && (
+                    <Link
+                      href={`/room/${room.id}/call`}
+                      className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-success/15 text-success text-xs font-semibold py-2.5 hover:bg-success/25 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Phone className="h-3.5 w-3.5" /> Join Call
+                    </Link>
+                  )}
                 </Link>
               </motion.div>
             ))}

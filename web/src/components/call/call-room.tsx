@@ -193,10 +193,14 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
   useEffect(() => {
     const onMediaErr = () => {}; // Media errors are handled gracefully via UI state
     const onParticipantDisconnected = () => playSfx('left');
-    const onDataReceived = (payload: Uint8Array) => {
+    const onDataReceived = (payload: Uint8Array, participant?: any) => {
       try {
         const data = JSON.parse(new TextDecoder().decode(payload));
-        if (data.type === 'airhorn') playSfx('airhorn');
+        if (data.type === 'airhorn') {
+          // Skip airhorn from self — playAirhorn() already plays it locally
+          if (participant?.isLocal) return;
+          playSfx('airhorn', { volume: 0.8 });
+        }
         else if (data.type === 'video-off-neterr') {
           toast.message(`${data.name}'s video turned off`, {
             description: 'Weak network — their camera was turned off to keep the call smooth.',
@@ -285,34 +289,7 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
 
   // ── Watch-together mode ──
   if (watchMode) {
-    return (
-      <div className="flex h-full w-full flex-col md:flex-row overflow-hidden">
-        <section className="h-[50%] md:h-full md:w-[70%] overflow-hidden bg-black">
-          <WatchStage roomId={roomId} currentUsername={user?.username ?? ''} />
-        </section>
-        <aside className="flex h-[50%] md:h-full md:w-[30%] min-w-0 flex-col border-t border-white/10 md:border-l md:border-t-0 bg-[#0a0a0a] overflow-hidden">
-          {/* Tiles — group: horizontal scroll strip; couple: self + partner side-by-side (both visible, compact) */}
-          <div className="shrink-0 border-b border-white/10 p-1.5">
-            <div className={isGroup ? 'flex gap-1.5 overflow-x-auto pb-1' : 'grid grid-cols-2 gap-1.5'}>
-              <div className={isGroup ? 'w-24 shrink-0 aspect-video' : 'aspect-video'}>
-                <SelfTile trackRef={localTrack} label={user?.username ?? 'You'} />
-              </div>
-              {remoteTracks.map((t) => (
-                <div key={`${t.participant.identity}-${t.source}`} className={isGroup ? 'w-24 shrink-0 aspect-video' : 'aspect-video'}>
-                  <Tile trackRef={t} label={t.participant.name || t.participant.identity} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="shrink-0 border-b border-white/10 py-1.5 flex justify-center">
-            <CallControls onLeave={onLeave} inline watchActive onToggleWatch={closeWatch} />
-          </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {user ? <WatchChat roomId={roomId} currentUserId={user.id} /> : null}
-          </div>
-        </aside>
-      </div>
-    );
+    return <WatchLayout tracks={remoteTracks} localTrack={localTrack} localUser={user} roomId={roomId} onLeave={onLeave} closeWatch={closeWatch} />;
   }
 
   // ── Normal call mode ──
@@ -342,6 +319,98 @@ function CallLayout({ roomId, onLeave, initialAudio, initialVideo }: {
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
           {user ? <WatchChat roomId={roomId} currentUserId={user.id} /> : null}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function WatchLayout({ tracks, localTrack, localUser, roomId, onLeave, closeWatch }: {
+  tracks: TrackReferenceOrPlaceholder[];
+  localTrack: TrackReferenceOrPlaceholder | undefined;
+  localUser: { id: string; username: string } | null;
+  roomId: string;
+  onLeave: () => void;
+  closeWatch: () => void;
+}) {
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+
+  // Clear pin when the pinned participant leaves
+  useEffect(() => {
+    if (pinnedId && !tracks.find((t) => t.participant.identity === pinnedId) && pinnedId !== '__local__') {
+      setPinnedId(null);
+    }
+  }, [tracks, pinnedId]);
+
+  const allTiles: { id: string; track?: TrackReferenceOrPlaceholder; label: string; isLocal: boolean }[] = [
+    { id: '__local__', track: localTrack, label: localUser?.username ?? 'You', isLocal: true },
+    ...tracks.map((t) => ({ id: t.participant.identity, track: t, label: t.participant.name || t.participant.identity, isLocal: false })),
+  ];
+
+  // Find the pinned tile (default: first remote or self)
+  const pinnedTile = pinnedId ? allTiles.find((t) => t.id === pinnedId) : allTiles[0];
+  const otherTiles = allTiles.filter((t) => t.id !== pinnedTile?.id);
+
+  const renderTile = (tile: { id: string; track?: TrackReferenceOrPlaceholder; label: string; isLocal: boolean }, small = false) => (
+    <button
+      key={tile.id}
+      onClick={() => setPinnedId(pinnedId === tile.id ? null : tile.id)}
+      className={`group/pin relative shrink-0 overflow-hidden rounded-lg border border-white/10 transition-all hover:border-white/30 ${
+        small ? 'aspect-video h-full' : 'aspect-video w-full'
+      } ${pinnedId === tile.id ? 'ring-2 ring-indigo-500' : ''}`}
+      title={pinnedId === tile.id ? 'Unpin' : `Pin ${tile.label}`}
+    >
+      {tile.track ? (
+        <Tile trackRef={tile.track} label={tile.label} />
+      ) : (
+        <SelfTile trackRef={tile.track} label={tile.label} />
+      )}
+      <div className="absolute inset-0 z-10 flex items-start justify-between p-1 opacity-0 transition-opacity group-hover/pin:opacity-100">
+        <span className="rounded bg-black/60 px-1.5 py-0.5 text-[9px] text-white/80 font-medium">{tile.label}</span>
+        <span className="rounded bg-black/60 px-1.5 py-0.5 text-[9px] text-white/80">
+          {pinnedId === tile.id ? 'Unpin' : 'Pin'}
+        </span>
+      </div>
+    </button>
+  );
+
+  return (
+    <div className="flex h-full w-full flex-col md:flex-row overflow-hidden">
+      {/* Main content area */}
+      <section className="flex-1 min-h-0 overflow-hidden bg-black flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <WatchStage roomId={roomId} currentUsername={localUser?.username ?? ''} />
+        </div>
+        {/* Bottom strip: pinned tile at 30% height, others in scrollable row */}
+        <div className="shrink-0 border-t border-white/10 bg-[#0a0a0a] p-2">
+          <div className="flex gap-2" style={{ height: '30vh', minHeight: '120px', maxHeight: '240px' }}>
+            {/* Pinned / main tile */}
+            {pinnedTile && (
+              <div className="relative h-full shrink-0" style={{ aspectRatio: '16/9' }}>
+                {renderTile(pinnedTile)}
+              </div>
+            )}
+            {/* Other tiles in horizontal scroll */}
+            {otherTiles.length > 0 && (
+              <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto">
+                {otherTiles.map((t) => (
+                  <div key={t.id} className="h-full shrink-0" style={{ aspectRatio: '16/9' }}>
+                    {renderTile(t, true)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Controls */}
+          <div className="mt-2 flex justify-center">
+            <CallControls onLeave={onLeave} inline watchActive onToggleWatch={closeWatch} />
+          </div>
+        </div>
+      </section>
+      {/* Chat sidebar */}
+      <aside className="flex h-[40%] md:h-full md:w-[30%] min-w-0 flex-col border-t border-white/10 md:border-l md:border-t-0 bg-[#0a0a0a] overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {localUser ? <WatchChat roomId={roomId} currentUserId={localUser.id} /> : null}
         </div>
       </aside>
     </div>
@@ -489,7 +558,7 @@ function CallControls({ onLeave, onToggleWatch, watchActive, inline }: {
     setAirhornCooldown(true);
     setTimeout(() => setAirhornCooldown(false), 3000);
     stopSfx(audioRef.current);
-    audioRef.current = playSfx('airhorn');
+    audioRef.current = playSfx('airhorn', { volume: 0.8 });
     try {
       const payload = new TextEncoder().encode(JSON.stringify({ type: 'airhorn' }));
       await localParticipant.publishData(payload, { reliable: true });

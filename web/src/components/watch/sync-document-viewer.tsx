@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Loader2 } from 'lucide-react';
-import { getSocket, type WatchStateDto } from '@/lib/socket';
+import { useEffect, useRef, useState } from 'react';
+import { Download, Loader2 } from 'lucide-react';
+import type { WatchStateDto } from '@/lib/socket';
 
 interface Props {
   src: string;
@@ -20,10 +20,8 @@ interface Props {
  */
 export function SyncDocumentViewer({ src, fileName, roomId, state }: Props) {
   const [page, setPage] = useState(1);
-  const [zoom, setZoom] = useState(100);
   const [loading, setLoading] = useState(true);
   const lastApplied = useRef<number>(0);
-  const isPdf = /\.pdf$/i.test(fileName) || src.includes('.pdf');
   const isPpt = /\.(ppt|pptx)$/i.test(fileName);
 
   // Apply remote page sync from watch state
@@ -35,17 +33,6 @@ export function SyncDocumentViewer({ src, fileName, roomId, state }: Props) {
       setPage(remotePage);
     }
   }, [state, page]);
-
-  const goToPage = useCallback((p: number) => {
-    const newPage = Math.max(1, p);
-    setPage(newPage);
-    lastApplied.current = newPage;
-    // Use the existing seek event — timestamp = page number for documents
-    getSocket().emit('watch:seek', { roomId, timestamp: newPage });
-  }, [roomId]);
-
-  const zoomIn = () => setZoom((z) => Math.min(200, z + 25));
-  const zoomOut = () => setZoom((z) => Math.max(50, z - 25));
 
   // For PPT files — show download card since browsers can't render them
   if (isPpt) {
@@ -75,49 +62,29 @@ export function SyncDocumentViewer({ src, fileName, roomId, state }: Props) {
     );
   }
 
-  // PDF viewer — uses iframe embed with page navigation
+  // PDF viewer — uses browser's built-in PDF rendering via iframe.
+  // Custom toolbar is hidden; users rely on the browser's native controls.
   return (
     <div className="relative flex h-full w-full flex-col bg-black/95">
-      {/* Toolbar */}
+      {/* Minimal top bar — just filename + download */}
       <div className="flex items-center justify-between border-b border-white/[0.08] bg-black/80 px-4 py-2 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary font-medium truncate max-w-[200px]">{fileName}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => goToPage(page - 1)} disabled={page <= 1} className="rounded-full p-1.5 hover:bg-white/10 transition-colors disabled:opacity-30" aria-label="Previous page">
-            <ChevronLeft className="h-4 w-4 text-white" />
-          </button>
-          <span className="text-xs text-white/70 min-w-[40px] text-center">Page {page}</span>
-          <button onClick={() => goToPage(page + 1)} className="rounded-full p-1.5 hover:bg-white/10 transition-colors" aria-label="Next page">
-            <ChevronRight className="h-4 w-4 text-white" />
-          </button>
-          <div className="mx-2 h-4 w-px bg-white/10" />
-          <button onClick={zoomOut} disabled={zoom <= 50} className="rounded-full p-1.5 hover:bg-white/10 transition-colors disabled:opacity-30" aria-label="Zoom out">
-            <ZoomOut className="h-4 w-4 text-white" />
-          </button>
-          <span className="text-[10px] text-white/60 w-8 text-center">{zoom}%</span>
-          <button onClick={zoomIn} disabled={zoom >= 200} className="rounded-full p-1.5 hover:bg-white/10 transition-colors disabled:opacity-30" aria-label="Zoom in">
-            <ZoomIn className="h-4 w-4 text-white" />
-          </button>
-          <div className="mx-2 h-4 w-px bg-white/10" />
-          <a href={src} download={fileName} target="_blank" rel="noopener noreferrer" className="rounded-full p-1.5 hover:bg-white/10 transition-colors" aria-label="Download" title="Download PDF">
-            <Download className="h-4 w-4 text-white" />
-          </a>
-        </div>
+        <span className="text-xs text-text-secondary font-medium truncate max-w-[200px]">{fileName}</span>
+        <a href={src} download={fileName} target="_blank" rel="noopener noreferrer" className="rounded-full p-1.5 hover:bg-white/10 transition-colors" aria-label="Download" title="Download PDF">
+          <Download className="h-4 w-4 text-white" />
+        </a>
       </div>
 
-      {/* PDF embed */}
-      <div className="relative flex-1 overflow-auto">
+      {/* PDF embed — full iframe with browser-native controls */}
+      <div className="relative flex-1 overflow-hidden">
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60">
             <Loader2 className="h-8 w-8 animate-spin text-white" />
           </div>
         )}
         <iframe
-          src={`${src}#page=${page}`}
+          src={src}
           title={fileName}
           className="h-full w-full border-0"
-          style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
           onLoad={() => setLoading(false)}
         />
       </div>

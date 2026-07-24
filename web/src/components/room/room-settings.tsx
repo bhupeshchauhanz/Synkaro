@@ -281,7 +281,7 @@ export function RoomSettings({
                               Save
                             </button>
                           </div>
-                          <p className="mt-1.5 text-[11px] text-text-tertiary">
+                          <p className="mt-1.5 text-xs text-text-tertiary">
                             Visible only inside this room. Empty to use your real username.
                           </p>
                         </div>
@@ -289,7 +289,7 @@ export function RoomSettings({
                         <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4 bg-bg-input">
                           <div>
                             <p className="text-sm font-medium text-text-primary">Mute notifications</p>
-                            <p className="text-[11px] text-text-tertiary mt-0.5">Don't show popups for new messages</p>
+                            <p className="text-xs text-text-tertiary mt-0.5">Don't show popups for new messages</p>
                           </div>
                           <button
                             role="switch"
@@ -326,7 +326,7 @@ export function RoomSettings({
                                 placeholder="e.g. Our Sunday cinema"
                                 className="input"
                               />
-                              <p className="mt-1.5 text-[11px] text-text-tertiary">
+                              <p className="mt-1.5 text-xs text-text-tertiary">
                                 A friendly name for the room. Doesn&apos;t change the URL.
                               </p>
                             </div>
@@ -466,7 +466,7 @@ export function RoomSettings({
                                 alt="custom"
                                 className="absolute inset-0 h-full w-full object-cover"
                               />
-                              <span className="absolute left-2 top-2 rounded-pill bg-black/60 backdrop-blur px-2 py-0.5 text-[10px] font-medium text-white">
+                              <span className="absolute left-2 top-2 rounded-pill bg-black/60 backdrop-blur px-2 py-0.5 text-[11px] font-medium text-white">
                                 Custom
                               </span>
                             </button>

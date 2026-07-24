@@ -74,7 +74,7 @@ export function RoomHeader({
           <h1 className="truncate text-sm font-semibold tracking-tight max-w-[120px] md:max-w-none">
             {nickname || name}
           </h1>
-          <p className="text-[10px] md:text-[11px] text-text-tertiary">
+          <p className="text-xs text-text-tertiary">
             {members.length} {members.length === 1 ? 'member' : 'members'}
           </p>
         </div>

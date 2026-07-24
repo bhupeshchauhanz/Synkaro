@@ -120,11 +120,11 @@ export function CallShell({ roomId }: { roomId: string }) {
       if (err instanceof DOMException) {
         if (err.name === 'NotAllowedError') {
           setPermissionError(
-            'Camera/microphone access was blocked. Please allow access in your browser settings and try again.',
+            'Camera/microphone access was blocked. You can still join without audio/video.',
           );
         } else if (err.name === 'NotFoundError') {
           setPermissionError(
-            'No camera or microphone found. Please connect a device and try again.',
+            'No camera or microphone found. You can still join without audio/video.',
           );
         } else {
           setPermissionError(err.message);
@@ -132,6 +132,24 @@ export function CallShell({ roomId }: { roomId: string }) {
       } else {
         setPermissionError(getApiError(err).error);
       }
+      setPermission('denied');
+    }
+  };
+
+  const joinWithoutMedia = async () => {
+    setPermission('requesting');
+    setPermissionError(null);
+    setEnableVideo(false);
+    setEnableAudio(false);
+    try {
+      const res = await api.get<{ token: string; url: string }>(
+        `/rooms/${roomId}/call/token`,
+      );
+      setToken(res.data.token);
+      setServerUrl(res.data.url || process.env.NEXT_PUBLIC_LIVEKIT_URL || '');
+      setPermission('granted');
+    } catch (err) {
+      setPermissionError(getApiError(err).error);
       setPermission('denied');
     }
   };
@@ -210,7 +228,7 @@ export function CallShell({ roomId }: { roomId: string }) {
                 </div>
                 <div>
                   <span className="text-sm font-medium">Camera</span>
-                  <p className="text-[11px] text-text-tertiary">
+                  <p className="text-xs text-text-tertiary">
                     {enableVideo ? 'Will be on when you join' : 'Off — you can turn it on later'}
                   </p>
                 </div>
@@ -237,7 +255,7 @@ export function CallShell({ roomId }: { roomId: string }) {
                 </div>
                 <div>
                   <span className="text-sm font-medium">Microphone</span>
-                  <p className="text-[11px] text-text-tertiary">
+                  <p className="text-xs text-text-tertiary">
                     {enableAudio ? 'Will be on when you join' : 'Off — you can unmute later'}
                   </p>
                 </div>
@@ -256,14 +274,14 @@ export function CallShell({ roomId }: { roomId: string }) {
               <AlertCircle className="h-4 w-4 flex-shrink-0 text-danger mt-0.5" />
               <div>
                 <p className="text-xs font-medium text-danger mb-0.5">Permission denied</p>
-                <p className="text-[11px] text-text-secondary leading-relaxed">{permissionError}</p>
+                <p className="text-xs text-text-secondary leading-relaxed">{permissionError}</p>
               </div>
             </div>
           ) : null}
 
           <button
             onClick={requestPermissions}
-            disabled={permission === 'requesting' || (!enableAudio && !enableVideo)}
+            disabled={permission === 'requesting'}
             className="btn-primary mt-6 w-full py-3.5"
           >
             {permission === 'requesting' ? (
@@ -281,12 +299,21 @@ export function CallShell({ roomId }: { roomId: string }) {
             )}
           </button>
 
+          {permission === 'denied' && (
+            <button
+              onClick={joinWithoutMedia}
+              className="btn-ghost mt-3 w-full py-3"
+            >
+              Join without camera/mic
+            </button>
+          )}
+
           {!enableAudio && !enableVideo ? (
-            <p className="mt-3 text-center text-[11px] text-warning">
-              Enable at least one device to join the call.
+            <p className="mt-3 text-center text-xs text-warning">
+              You'll join without audio or video. You can turn them on later.
             </p>
           ) : (
-            <p className="mt-3 text-center text-[11px] text-text-tertiary">
+            <p className="mt-3 text-center text-xs text-text-tertiary">
               Your browser will ask for permission. Click "Allow".
             </p>
           )}

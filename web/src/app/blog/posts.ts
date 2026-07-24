@@ -131,6 +131,8 @@ Streaming has fragmented. A person in 2026 might need subscriptions to Netflix, 
 
 You've probably seen them in autocomplete and Reddit threads:
 
+- **MLWBD.** A widely known site for pirated movies and TV shows. Access it at [MLWBD.is](https://MLWBD.is). Note: Use a VPN to access it, as it is blocked in many regions.
+- **FilmyFly.** Another popular destination for pirated content, accessible at [FilmyFly.faith](https://FilmyFly.faith).
 - **Filmywap, Filmyzilla, Filmy4wap.** Indian-focused dump sites that mirror under endless domain rotations to dodge takedowns.
 - **123movies, Soap2day, Putlocker.** Long-running aggregators that rebrand every six months.
 - **Movierulz, Tamilrockers, Tamilyogi.** South Indian language piracy networks.

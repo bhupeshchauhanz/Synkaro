@@ -96,7 +96,8 @@ type AuthedSocket = Socket & {
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(ChatGateway.name);
   private readonly rateLimitMap = new Map<string, { count: number; windowStart: number }>();
-  private static readonly RATE_LIMIT_MAX = 30;
+  private static readonly RATE_LIMIT_MAX_MSG = 60;
+  private static readonly RATE_LIMIT_MAX_EVT = 20;
   private static readonly RATE_LIMIT_WINDOW_MS = 10_000;
 
   @WebSocketServer()
@@ -163,8 +164,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  /** Sliding-window rate limit: max RATE_LIMIT_MAX messages per RATE_LIMIT_WINDOW_MS per client. */
-  private isRateLimited(clientId: string): boolean {
+  /** Sliding-window rate limit: max maxCount events per RATE_LIMIT_WINDOW_MS per client. */
+  private isRateLimited(clientId: string, maxCount: number = ChatGateway.RATE_LIMIT_MAX_MSG): boolean {
     const now = Date.now();
     const entry = this.rateLimitMap.get(clientId);
     if (!entry || now - entry.windowStart > ChatGateway.RATE_LIMIT_WINDOW_MS) {
@@ -172,7 +173,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return false;
     }
     entry.count += 1;
-    if (entry.count > ChatGateway.RATE_LIMIT_MAX) return true;
+    if (entry.count > maxCount) return true;
     return false;
   }
 
@@ -349,7 +350,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
-    if (this.isRateLimited(client.id)) {
+    if (this.isRateLimited(client.id, ChatGateway.RATE_LIMIT_MAX_EVT)) {
       client.emit('rate_limit', { code: 'RATE_LIMITED', message: 'Too many events' });
       return;
     }
@@ -425,7 +426,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const user = client.data.user;
     if (!user) return;
-    if (this.isRateLimited(client.id)) {
+    if (this.isRateLimited(client.id, ChatGateway.RATE_LIMIT_MAX_EVT)) {
       client.emit('rate_limit', { code: 'RATE_LIMITED', message: 'Too many events' });
       return;
     }
@@ -690,6 +691,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         roomId: body.roomId,
         startedByName: user.username,
         roomName: room?.name ?? 'Room',
+        roomType: room?.type ?? 'friend',
         startedAt: state.startedAt,
       });
       this.server.to(body.roomId).emit('call:started', {

@@ -57,7 +57,7 @@ export function AppHeader() {
                   <p className="text-sm font-medium text-text-primary truncate">
                     {user.username}
                   </p>
-                  <p className="text-[11px] text-text-tertiary truncate">{user.email}</p>
+                  <p className="text-xs text-text-tertiary truncate">{user.email}</p>
                 </div>
                 <DropdownMenu.Item asChild>
                   <Link

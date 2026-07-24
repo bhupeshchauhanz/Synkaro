@@ -142,7 +142,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreated }: Props) {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-text-primary">Couple</div>
-                            <div className="text-[11px] text-text-tertiary">Just the two of you</div>
+                            <div className="text-xs text-text-tertiary">Just the two of you</div>
                           </div>
                         </button>
                         <button
@@ -165,7 +165,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreated }: Props) {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-text-primary">Friends</div>
-                            <div className="text-[11px] text-text-tertiary">Up to 6 people</div>
+                            <div className="text-xs text-text-tertiary">Up to 6 people</div>
                           </div>
                         </button>
                       </div>

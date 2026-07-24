@@ -10,10 +10,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <Toaster
         position="top-right"
         theme="dark"
-        duration={5000}
-        closeButton={false}
+        duration={4000}
+        closeButton={true}
         gap={10}
-        offset={20}
+        offset={70}
         visibleToasts={3}
         icons={{
           success: <CheckCircle2 className="h-5 w-5 text-emerald-500" fill="currentColor" />,

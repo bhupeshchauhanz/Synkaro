@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Phone, X, Maximize2 } from 'lucide-react';
+import { Phone, PhoneOff, X, Maximize2 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/lib/auth-store';
 import { playSfx, stopSfx, preloadSfx } from '@/lib/sfx';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActiveCallInfo {
   roomId: string;
@@ -16,18 +16,30 @@ interface ActiveCallInfo {
   participantCount: number;
 }
 
+interface IncomingCallInfo {
+  roomId: string;
+  roomName: string;
+  startedByName: string;
+  roomType?: 'couple' | 'friend';
+}
+
 /**
- * Shows a floating indicator when user is in an active call but navigated away.
- * Allows quick return to the call in fullscreen.
+ * Global call UI: shows active-call indicator when navigating away from a call,
+ * and shows an accept/decline popup when another user starts a call.
  */
 export function ActiveCallIndicator() {
   const router = useRouter();
   const { user, status } = useAuthStore();
   const [activeCall, setActiveCall] = useState<ActiveCallInfo | null>(null);
   const [dismissed, setDismissed] = useState(false);
-  // Incoming calls auto-redirect to fullscreen (no popup state needed)
+  const [incomingCall, setIncomingCall] = useState<IncomingCallInfo | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dismissIncoming = useCallback(() => {
+    setIncomingCall(null);
+    stopSfx(audioRef.current);
+    audioRef.current = null;
+  }, []);
 
   useEffect(() => {
     if (status !== 'authenticated' || !user) return;
@@ -35,7 +47,6 @@ export function ActiveCallIndicator() {
     const socket = getSocket();
 
     const onCallStarted = (data: { roomId: string; startedByName: string }) => {
-      // Don't show if we're already on the call page
       if (window.location.pathname.includes(`/room/${data.roomId}/call`)) return;
       setActiveCall({
         roomId: data.roomId,
@@ -46,58 +57,129 @@ export function ActiveCallIndicator() {
       setDismissed(false);
     };
 
-    const onCallEnded = () => {
-      setActiveCall(null);
+    const onCallEnded = (data: { roomId: string }) => {
+      setActiveCall((prev) => prev?.roomId === data.roomId ? null : prev);
+      setIncomingCall((prev) => prev?.roomId === data.roomId ? null : prev);
+      stopSfx(audioRef.current);
+      audioRef.current = null;
     };
 
     const onParticipantJoined = (data: { participantCount: number }) => {
       setActiveCall((prev) => prev ? { ...prev, participantCount: data.participantCount } : null);
     };
 
-    const onIncomingCall = (data: { roomId: string; roomName: string; startedByName: string }) => {
-      // Already in THIS call's room — skip
+    const onIncomingCall = (data: {
+      roomId: string;
+      roomName: string;
+      startedByName: string;
+      roomType?: 'couple' | 'friend';
+    }) => {
       if (window.location.pathname.includes(`/room/${data.roomId}/call`)) return;
-      // Play incoming ring for 3 seconds, then auto-redirect to call fullscreen
       stopSfx(audioRef.current);
       audioRef.current = playSfx('incoming', { loop: true });
-      // Clear any previous redirect timer
-      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-      redirectTimerRef.current = setTimeout(() => {
-        redirectTimerRef.current = null;
-        stopSfx(audioRef.current);
-        audioRef.current = null;
-        router.push(`/room/${data.roomId}/call`);
-      }, 3000);
+      setIncomingCall({
+        roomId: data.roomId,
+        roomName: data.roomName ?? 'Room',
+        startedByName: data.startedByName,
+        roomType: data.roomType,
+      });
+    };
+
+    const onCallDeclined = (data: { roomId: string; byName: string }) => {
+      setIncomingCall((prev) => prev?.roomId === data.roomId ? null : prev);
+      stopSfx(audioRef.current);
+      audioRef.current = null;
     };
 
     socket.on('call:started', onCallStarted);
     socket.on('call:ended', onCallEnded);
     socket.on('call:participant-joined', onParticipantJoined);
     socket.on('call:incoming', onIncomingCall);
+    socket.on('call:declined', onCallDeclined);
 
     return () => {
       socket.off('call:started', onCallStarted);
       socket.off('call:ended', onCallEnded);
       socket.off('call:participant-joined', onParticipantJoined);
       socket.off('call:incoming', onIncomingCall);
+      socket.off('call:declined', onCallDeclined);
     };
   }, [status, user]);
 
-  // Auto-dismiss when navigating to call page
+  // Auto-dismiss active-call indicator when navigating to call page
   useEffect(() => {
     if (window.location.pathname.includes('/call')) {
       setActiveCall(null);
     }
   }, []);
 
-  // Cleanup timer + audio on unmount
+  // Cleanup audio on unmount
   useEffect(() => () => {
-    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     stopSfx(audioRef.current);
   }, []);
 
+  const handleAcceptIncoming = useCallback(() => {
+    if (!incomingCall) return;
+    stopSfx(audioRef.current);
+    audioRef.current = null;
+    const rid = incomingCall.roomId;
+    setIncomingCall(null);
+    router.push(`/room/${rid}/call`);
+  }, [incomingCall, router]);
+
+  const handleDeclineIncoming = useCallback(() => {
+    if (!incomingCall) return;
+    stopSfx(audioRef.current);
+    audioRef.current = null;
+    getSocket().emit('call:decline', { roomId: incomingCall.roomId });
+    setIncomingCall(null);
+  }, [incomingCall]);
+
   return (
     <>
+      {/* Incoming call popup - shown on ANY page */}
+      <AnimatePresence>
+        {incomingCall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="w-full max-w-sm rounded-3xl border border-white/[0.12] bg-bg-elevated/98 backdrop-blur-xl shadow-2xl p-6 text-center"
+            >
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/15 animate-pulse-soft">
+                <Phone className="h-7 w-7 text-success" />
+              </div>
+              <p className="text-lg font-bold text-text-primary">{incomingCall.startedByName}</p>
+              <p className="text-sm text-text-tertiary mt-1">
+                Incoming call from <span className="font-medium text-text-secondary">{incomingCall.roomName}</span>
+              </p>
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={handleDeclineIncoming}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-danger/15 text-danger font-semibold py-3 text-sm hover:bg-danger/25 transition-colors"
+                >
+                  <PhoneOff className="h-4 w-4" /> Decline
+                </button>
+                <button
+                  onClick={handleAcceptIncoming}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-success text-white font-semibold py-3 text-sm hover:bg-success/90 transition-colors"
+                >
+                  <Phone className="h-4 w-4" /> Accept
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active call indicator - when navigated away from an ongoing call */}
       <AnimatePresence>
         {activeCall && !dismissed && (
           <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
@@ -109,7 +191,7 @@ export function ActiveCallIndicator() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-text-primary truncate">Active Call</p>
                   <p className="text-[11px] text-text-tertiary mt-0.5">
-                    {activeCall.startedByName} • {activeCall.participantCount} in call
+                    {activeCall.startedByName} &bull; {activeCall.participantCount} in call
                   </p>
                 </div>
                 <button
@@ -139,8 +221,6 @@ export function ActiveCallIndicator() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Incoming calls auto-redirect to fullscreen — no popup needed */}
     </>
   );
 }

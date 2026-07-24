@@ -291,8 +291,7 @@ export function WatchStage({
         onStatus: setUploadStatus,
       });
       setFiles((prev) => [result, ...prev]);
-      setActiveFile(result);
-      toast.success('Upload complete');
+      toast.success('Upload complete — click to open');
     } catch (err) {
       const aborted = (err as Error)?.name === 'AbortError';
       // Discard the partial upload's chunks from the server (any %)
@@ -323,7 +322,7 @@ export function WatchStage({
       api.get<UploadedFile[]>(`/upload/rooms/${roomId}/files`).then((res) => setFiles(res.data)).catch(() => undefined);
     });
 
-    toast.success('Video deleted');
+    toast.success('File deleted');
   };
 
   if (activeFile) {
@@ -443,7 +442,7 @@ export function WatchStage({
                       <p className="text-[10px] text-text-tertiary mt-0.5">{timeLeftMs > 0 ? `Auto-deletes in ${timeLeftStr}` : 'Deleting soon...'}</p>
                     </div>
                   </button>
-                  <button onClick={() => deleteFile(f.id)} className="p-2 ml-2 text-text-tertiary hover:text-danger hover:bg-danger/10 rounded-md transition-colors" title="Delete video">
+                  <button onClick={() => deleteFile(f.id)} className="p-2 ml-2 text-text-tertiary hover:text-danger hover:bg-danger/10 rounded-md transition-colors" title="Delete file">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>

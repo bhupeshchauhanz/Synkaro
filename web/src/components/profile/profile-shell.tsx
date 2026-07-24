@@ -18,9 +18,37 @@ export function ProfileShell() {
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [address, setAddress] = useState('');
   const [dob, setDob] = useState('');
   const [avatar, setAvatar] = useState('');
+
+  const COUNTRY_CODES = [
+    { code: '+1', label: 'US/CA (+1)', maxLen: 10 },
+    { code: '+44', label: 'UK (+44)', maxLen: 10 },
+    { code: '+91', label: 'India (+91)', maxLen: 10 },
+    { code: '+61', label: 'Australia (+61)', maxLen: 9 },
+    { code: '+86', label: 'China (+86)', maxLen: 11 },
+    { code: '+81', label: 'Japan (+81)', maxLen: 10 },
+    { code: '+49', label: 'Germany (+49)', maxLen: 11 },
+    { code: '+33', label: 'France (+33)', maxLen: 9 },
+    { code: '+55', label: 'Brazil (+55)', maxLen: 11 },
+    { code: '+7', label: 'Russia (+7)', maxLen: 10 },
+    { code: '+82', label: 'South Korea (+82)', maxLen: 10 },
+    { code: '+971', label: 'UAE (+971)', maxLen: 9 },
+  ] as const;
+
+  const getMaxPhoneLen = () => {
+    const found = COUNTRY_CODES.find((c) => c.code === countryCode);
+    return found?.maxLen ?? 15;
+  };
+
+  const onPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    if (digits.length <= getMaxPhoneLen()) {
+      setPhone(digits);
+    }
+  };
 
   useEffect(() => {
     if (status === 'idle') void load();
@@ -33,7 +61,15 @@ export function ProfileShell() {
     if (!user) return;
     setUsername(user.username);
     setBio(user.bio ?? '');
-    setPhone(user.phone ?? '');
+    const raw = user.phone ?? '';
+    const ccMatch = raw.match(/^\+(\d{1,3})/);
+    if (ccMatch) {
+      const detected = '+' + ccMatch[1];
+      setCountryCode(detected);
+      setPhone(raw.replace(/^\+\d{1,3}\s?/, ''));
+    } else {
+      setPhone(raw);
+    }
     setAddress(user.address ?? '');
     setDob(user.dateOfBirth ? user.dateOfBirth.slice(0, 10) : '');
     setAvatar(user.avatar ?? '');
@@ -66,7 +102,7 @@ export function ProfileShell() {
       await api.patch('/users/me', {
         username,
         bio: bio || undefined,
-        phone: phone || undefined,
+        phone: phone ? `${countryCode}${phone}` : undefined,
         address: address || undefined,
         dateOfBirth: dob || undefined,
         avatar: avatar || undefined,
@@ -192,19 +228,30 @@ export function ProfileShell() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-text-secondary">
-                <Phone className="inline h-3 w-3 mr-1" /> Phone (optional)
+                <Phone className="inline h-3 w-3 mr-1" /> Phone <span className="text-red-500">*</span>
               </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 7500..."
-                className="input"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="input !w-auto !min-w-[120px]"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={onPhoneChange}
+                  placeholder={`Max ${getMaxPhoneLen()} digits`}
+                  className="input flex-1"
+                />
+              </div>
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-text-secondary">
-                <MapPin className="inline h-3 w-3 mr-1" /> Address (optional)
+                <MapPin className="inline h-3 w-3 mr-1" /> Address <span className="text-red-500">*</span>
               </label>
               <input
                 value={address}
@@ -215,7 +262,7 @@ export function ProfileShell() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-text-secondary">
-                <Calendar className="inline h-3 w-3 mr-1" /> Date of birth (optional)
+                <Calendar className="inline h-3 w-3 mr-1" /> Date of birth <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
